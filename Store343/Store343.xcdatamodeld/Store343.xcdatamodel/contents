@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="24299" systemVersion="25A362" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithSwiftData="YES" userDefinedModelVersionIdentifier="">
+    <entity name="ATTRIBUTES" representedClassName="ATTRIBUTES" syncable="YES" codeGenerationType="class">
+        <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="hasImage" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="imageData" optional="YES" attributeType="Binary"/>
+        <attribute name="tartalom" optional="YES" attributeType="String"/>
+        <attribute name="tema" optional="YES" attributeType="String"/>
+        <attribute name="timestamp" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="tipus" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="NapiInfo" representedClassName="NapiInfo" syncable="YES" codeGenerationType="class">
+        <attribute name="datum" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="erintett" optional="YES" attributeType="String"/>
+        <attribute name="fajlnev" optional="YES" attributeType="String"/>
+        <attribute name="feldolgozva" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="hatarido" optional="YES" attributeType="String"/>
+        <attribute name="infoIndex" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="kepData" optional="YES" attributeType="Binary"/>
+        <attribute name="oldalSzam" optional="YES" attributeType="Integer 16" defaultValueString="1" usesScalarValueType="YES"/>
+        <attribute name="tartalom" optional="YES" attributeType="String"/>
+        <attribute name="tema" optional="YES" attributeType="String"/>
+        <attribute name="termekLista" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="NfBizonylat" representedClassName="NfBizonylat" syncable="YES" codeGenerationType="class">
+        <attribute name="bizonylatSzam" attributeType="String"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="kesz" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="osszesTetel" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="het" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NfHet" inverseName="bizonylatokRelation" inverseEntity="NfHet"/>
+        <relationship name="termekekRelation" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="NfTermek" inverseName="bizonylat" inverseEntity="NfTermek"/>
+    </entity>
+    <entity name="NfHet" representedClassName="NfHet" syncable="YES" codeGenerationType="class">
+        <attribute name="befejezve" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="ev" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="hetSzam" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="kezdoDatum" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="vegDatum" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="bizonylatokRelation" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="NfBizonylat" inverseName="het" inverseEntity="NfBizonylat"/>
+    </entity>
+    <entity name="NfTermek" representedClassName="NfTermek" syncable="YES" codeGenerationType="class">
+        <attribute name="cikkMegnev" attributeType="String"/>
+        <attribute name="cikkszam" attributeType="String"/>
+        <attribute name="elviKeszlet" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="osszesen" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="osszeszedve" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="sorrend" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="talalasok" optional="YES" attributeType="String"/>
+        <relationship name="bizonylat" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NfBizonylat" inverseName="termekekRelation" inverseEntity="NfBizonylat"/>
+    </entity>
+</model>

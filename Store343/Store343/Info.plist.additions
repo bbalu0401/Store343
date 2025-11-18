@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Ezeket a kulcsokat kell hozzáadni az Info.plist fájlhoz -->
+    
+    <!-- Kamera engedély -->
+    <key>NSCameraUsageDescription</key>
+    <string>A Store 343 app használná a kamerát, hogy képeket készíthess a napi információkhoz és OCR szövegfelismerést végezhess.</string>
+    
+    <!-- Fotótár engedély -->
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>A Store 343 app hozzá szeretne férni a fotótáradhoz, hogy képeket válaszhajs ki OCR szövegfelismeréshez.</string>
+    
+    <!-- Fotótár hozzáadás engedély (iOS 14+) -->
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>A Store 343 app képeket szeretne menteni a fotótáradba.</string>
+</dict>
+</plist>
