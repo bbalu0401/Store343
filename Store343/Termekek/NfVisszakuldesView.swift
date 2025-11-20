@@ -68,10 +68,15 @@ struct NfVisszakuldesView: View {
                 .background(Color.adaptiveBackground(colorScheme: colorScheme))
                 .navigationBarHidden(true)
             } else if let bizonylat = selectedBizonylat {
-                NfBizonylatDetailView(
-                    bizonylat: bizonylat,
-                    onBack: { selectedBizonylat = nil }
-                )
+                VStack(spacing: 0) {
+                    NfBizonylatDetailView(
+                        bizonylat: bizonylat,
+                        onBack: { selectedBizonylat = nil }
+                    )
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .background(Color.adaptiveBackground(colorScheme: colorScheme))
+                .navigationBarHidden(true)
             }
         }
         .sheet(isPresented: $showDocumentPicker) {
