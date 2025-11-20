@@ -67,17 +67,29 @@ struct DocumentPicker: UIViewControllerRepresentable {
                 try FileManager.default.copyItem(at: url, to: tempURL)
 
                 print("✅ File copied to temp: \(tempURL.path)")
-                parent.selectedDocumentURL = tempURL
-                print("✅ selectedDocumentURL set")
+
+                // IMPORTANT: Set binding on main thread after successful copy
+                DispatchQueue.main.async {
+                    print("🔄 Setting selectedDocumentURL to: \(tempURL.lastPathComponent)")
+                    self.parent.selectedDocumentURL = tempURL
+                    print("✅ selectedDocumentURL set successfully")
+                }
             } catch {
                 print("❌ Error copying document: \(error)")
             }
 
-            parent.presentationMode.wrappedValue.dismiss()
+            // Dismiss on main thread
+            DispatchQueue.main.async {
+                print("👋 Dismissing document picker")
+                self.parent.presentationMode.wrappedValue.dismiss()
+            }
         }
 
         func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
-            parent.presentationMode.wrappedValue.dismiss()
+            print("❌ Document picker cancelled by user")
+            DispatchQueue.main.async {
+                self.parent.presentationMode.wrappedValue.dismiss()
+            }
         }
     }
 }
