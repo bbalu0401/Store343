@@ -18,6 +18,7 @@ struct NfVisszakuldesView: View {
     @State private var selectedDocumentURL: URL? = nil
     @State private var showImagePicker = false
     @State private var showCamera = false
+    @State private var selectedImage: UIImage? = nil
     @State private var isProcessing = false
     @State private var errorMessage: String? = nil
     @State private var showError = false
@@ -69,18 +70,19 @@ struct NfVisszakuldesView: View {
             DocumentPicker(selectedDocumentURL: $selectedDocumentURL, allowedTypes: [.pdf, .spreadsheet, .commaSeparatedText])
         }
         .sheet(isPresented: $showImagePicker) {
-            ImagePicker(sourceType: .photoLibrary, onImagePicked: { image in
-                processImage(image)
-            })
+            ImagePicker(selectedImage: $selectedImage, sourceType: .photoLibrary)
         }
         .sheet(isPresented: $showCamera) {
-            ImagePicker(sourceType: .camera, onImagePicked: { image in
-                processImage(image)
-            })
+            ImagePicker(selectedImage: $selectedImage, sourceType: .camera)
         }
         .onChange(of: selectedDocumentURL) { oldValue, newValue in
             if let documentURL = newValue {
                 processDocument(documentURL: documentURL)
+            }
+        }
+        .onChange(of: selectedImage) { oldValue, newValue in
+            if let image = newValue {
+                processImage(image)
             }
         }
         .alert("Hiba", isPresented: $showError) {
@@ -249,16 +251,18 @@ struct NfVisszakuldesView: View {
 
         Task {
             do {
-                let claudeTermekek = try await ClaudeAPIService.shared.processNfVisszakuldesImage(image: image)
+                let claudeTermekek = try await ClaudeAPIService.shared.processNfVisszakuldes(image: image)
 
                 await MainActor.run {
                     saveToCoreData(claudeTermekek)
+                    selectedImage = nil
                     isProcessing = false
                 }
             } catch {
                 await MainActor.run {
                     errorMessage = "Feldolgozási hiba: \(error.localizedDescription)"
                     showError = true
+                    selectedImage = nil
                     isProcessing = false
                 }
             }
