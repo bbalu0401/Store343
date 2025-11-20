@@ -120,6 +120,7 @@ struct NfBizonylatDetailView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(Color.adaptiveBackground(colorScheme: colorScheme))
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color.adaptiveBackground(colorScheme: colorScheme))
         .navigationBarHidden(true)
     }
