@@ -38,6 +38,7 @@
 		2F9673CE234C466BA1631263 /* DocumentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD8EE23E4DDB4D4A9729A2CB /* DocumentPicker.swift */; };
 		491F8B59258C46F288165E76 /* NapiInfoModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5E8AC18E241454886AB7C68 /* NapiInfoModels.swift */; };
 		E1968FBC54C747188153061A /* NfModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E7C172DE95447029EFCF5A7 /* NfModels.swift */; };
+		F86263F58D594BB98D6F930E /* NfBizonylatDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F048A20F427F428AAC5A72D0 /* NfBizonylatDetailView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -73,6 +74,7 @@
 		CD8EE23E4DDB4D4A9729A2CB /* DocumentPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPicker.swift; sourceTree = "<group>"; };
 		D5E8AC18E241454886AB7C68 /* NapiInfoModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NapiInfoModels.swift; sourceTree = "<group>"; };
 		3E7C172DE95447029EFCF5A7 /* NfModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NfModels.swift; sourceTree = "<group>"; };
+		F048A20F427F428AAC5A72D0 /* NfBizonylatDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NfBizonylatDetailView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -191,6 +193,7 @@
 				BA333A3A2EBFD0290012B6AA /* NfBizonylatListView.swift */,
 				BA333A3C2EBFD02B0012B6AA /* NfTermekListView.swift */,
 				BA333A3E2EBFD02D0012B6AA /* NfOCRProcessView.swift */,
+				F048A20F427F428AAC5A72D0 /* NfBizonylatDetailView.swift */,
 			);
 			path = Termekek;
 			sourceTree = "<group>";
@@ -307,6 +310,7 @@
 				BA333A3B2EBFD02A0012B6AA /* NfBizonylatListView.swift in Sources */,
 				BA333A3D2EBFD02C0012B6AA /* NfTermekListView.swift in Sources */,
 				BA333A3F2EBFD02E0012B6AA /* NfOCRProcessView.swift in Sources */,
+				F86263F58D594BB98D6F930E /* NfBizonylatDetailView.swift in Sources */,
 				2F9673CE234C466BA1631263 /* DocumentPicker.swift in Sources */,
 				491F8B59258C46F288165E76 /* NapiInfoModels.swift in Sources */,
 				E1968FBC54C747188153061A /* NfModels.swift in Sources */,

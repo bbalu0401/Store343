@@ -1,5 +1,5 @@
 // NfVisszakuldesView.swift
-// Main NF (Nonfood) visszaküldés view with weekly list
+// Simplified NF visszaküldés view
 
 import SwiftUI
 import CoreData
@@ -10,24 +10,24 @@ struct NfVisszakuldesView: View {
     @Environment(\.managedObjectContext) private var viewContext
 
     @FetchRequest(
-        sortDescriptors: [
-            NSSortDescriptor(keyPath: \NfHet.ev, ascending: true),
-            NSSortDescriptor(keyPath: \NfHet.hetSzam, ascending: true)
-        ],
+        sortDescriptors: [NSSortDescriptor(keyPath: \NfBizonylat.bizonylatSzam, ascending: true)],
         animation: .default)
-    private var weeks: FetchedResults<NfHet>
+    private var bizonylatok: FetchedResults<NfBizonylat>
 
-    @State private var selectedYear: Int = Calendar.current.component(.year, from: Date())
-    @State private var showYearPicker = false
-    @State private var selectedWeek: NfHet? = nil
-    @State private var showOCRFlow = false
-    @State private var weekForUpload: NfHet? = nil
+    @State private var showDocumentPicker = false
+    @State private var selectedDocumentURL: URL? = nil
+    @State private var showImagePicker = false
+    @State private var showCamera = false
+    @State private var isProcessing = false
+    @State private var errorMessage: String? = nil
+    @State private var showError = false
 
-    let availableYears = [2024, 2025, 2026, 2027]
+    @State private var searchText = ""
+    @State private var selectedBizonylat: NfBizonylat? = nil
 
     var body: some View {
         VStack(spacing: 0) {
-            // Custom Navigation Bar
+            // Navigation Bar
             HStack {
                 Button(action: {
                     selectedType = nil
@@ -41,330 +41,463 @@ struct NfVisszakuldesView: View {
 
                 Spacer()
 
-                Text("Nf visszaküldés")
+                Text("NF visszaküldés")
                     .font(.headline)
 
                 Spacer()
 
-                // Year selector
-                Button(action: {
-                    showYearPicker = true
-                }) {
-                    HStack(spacing: 4) {
-                        Text(String(selectedYear))
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        Image(systemName: "chevron.down")
-                            .font(.caption)
-                    }
-                    .foregroundColor(.lidlBlue)
-                }
+                // Placeholder for balance
+                Color.clear.frame(width: 80)
             }
             .padding()
             .background(Color.adaptiveBackground(colorScheme: colorScheme))
-            .overlay(
-                Divider()
-                    .background(Color.secondary.opacity(0.3)),
-                alignment: .bottom
-            )
+            .overlay(Divider().background(Color.secondary.opacity(0.3)), alignment: .bottom)
 
             // Content
-            if selectedWeek == nil {
-                weekListView
-            } else if let week = selectedWeek {
-                // Navigate to bizonylat list
-                NfBizonylatListView(
-                    week: week,
-                    onBack: {
-                        selectedWeek = nil
-                    },
-                    onAddPages: {
-                        weekForUpload = week
-                        showOCRFlow = true
-                    }
+            if selectedBizonylat == nil {
+                mainView
+            } else if let bizonylat = selectedBizonylat {
+                NfBizonylatDetailView(
+                    bizonylat: bizonylat,
+                    onBack: { selectedBizonylat = nil }
                 )
             }
         }
         .background(Color.adaptiveBackground(colorScheme: colorScheme))
         .navigationBarHidden(true)
-        .onAppear {
-            generateWeeksIfNeeded()
+        .sheet(isPresented: $showDocumentPicker) {
+            DocumentPicker(selectedDocumentURL: $selectedDocumentURL, allowedTypes: [.pdf, .spreadsheet, .commaSeparatedText])
         }
-        .actionSheet(isPresented: $showYearPicker) {
-            ActionSheet(
-                title: Text("Válassz évet"),
-                buttons: availableYears.map { year in
-                        .default(Text("\(year)")) {
-                        selectedYear = year
-                        generateWeeksIfNeeded()
-                    }
-                } + [.cancel()]
-            )
+        .sheet(isPresented: $showImagePicker) {
+            ImagePicker(sourceType: .photoLibrary, onImagePicked: { image in
+                processImage(image)
+            })
         }
-        .sheet(isPresented: $showOCRFlow) {
-            if let week = weekForUpload {
-                NfOCRProcessView(week: week, onComplete: {
-                    // Refresh view after completion
-                    showOCRFlow = false
-                })
-                .environment(\.managedObjectContext, viewContext)
+        .sheet(isPresented: $showCamera) {
+            ImagePicker(sourceType: .camera, onImagePicked: { image in
+                processImage(image)
+            })
+        }
+        .onChange(of: selectedDocumentURL) { oldValue, newValue in
+            if let documentURL = newValue {
+                processDocument(documentURL: documentURL)
             }
+        }
+        .alert("Hiba", isPresented: $showError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage ?? "Ismeretlen hiba történt")
         }
     }
 
-    // MARK: - Week List View
-    var weekListView: some View {
-        let filteredWeeks = weeks.filter { $0.ev == selectedYear }
+    // MARK: - Main View
+    var mainView: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                // Upload Button
+                uploadButton
+                    .padding(.top, 20)
+                    .padding(.horizontal)
 
-        return ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(spacing: 0, pinnedViews: []) {
-                if filteredWeeks.isEmpty {
-                    VStack(spacing: 16) {
-                        Image(systemName: "calendar.badge.exclamationmark")
-                            .font(.system(size: 60))
-                            .foregroundColor(.secondary.opacity(0.5))
-
-                        Text("Nincsenek hetek")
-                            .font(.title3)
-                            .fontWeight(.medium)
-
-                        Text("Nyomd meg a gombot a hetek generálásához.")
+                // Bizonylatok Section
+                if !bizonylatok.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("FELDOLGOZOTT BIZONYLATOK")
                             .font(.caption)
+                            .fontWeight(.semibold)
                             .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
 
-                        Button(action: {
-                            generateWeeksIfNeeded()
-                        }) {
-                            Text("Hetek generálása")
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.white)
-                                .padding()
-                                .background(Color.lidlBlue)
-                                .cornerRadius(12)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 60)
-                } else {
-                    // Group weeks by month
-                    let groupedWeeks = groupWeeksByMonth(filteredWeeks)
-
-                    ForEach(groupedWeeks.indices, id: \.self) { index in
-                        let monthGroup = groupedWeeks[index]
-
-                        VStack(alignment: .leading, spacing: 0) {
-                            // Month header
-                            Text(monthGroup.monthName.uppercased())
-                                .font(.subheadline)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal)
-                                .padding(.top, index == 0 ? 16 : 24)
-                                .padding(.bottom, 12)
-
-                            // Weeks in this month
-                            ForEach(monthGroup.weeks, id: \.id) { week in
-                                WeekCard(week: week, onTap: {
-                                    selectedWeek = week
-                                }, onUpload: {
-                                    weekForUpload = week
-                                    showOCRFlow = true
-                                })
-                                .padding(.horizontal)
-                                .padding(.bottom, 12)
-                                .id(week.id) // For ScrollViewReader
+                        ForEach(bizonylatok, id: \.id) { bizonylat in
+                            BizonylatCard(bizonylat: bizonylat) {
+                                selectedBizonylat = bizonylat
                             }
+                            .padding(.horizontal)
                         }
                     }
+                    .padding(.top, 8)
+                }
 
-                    // Bottom padding
-                    Color.clear.frame(height: 16)
+                // Search Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("KERESÉS")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal)
+
+                    // Search Field
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.secondary)
+
+                        TextField("Cikkszám keresése...", text: $searchText)
+                            .keyboardType(.numberPad)
+                    }
+                    .padding()
+                    .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
+                    .cornerRadius(12)
+                    .padding(.horizontal)
+
+                    // Search Results
+                    if !searchText.isEmpty {
+                        searchResultsView
+                    }
+                }
+                .padding(.top, 8)
+
+                Spacer()
+            }
+        }
+    }
+
+    // MARK: - Upload Button
+    var uploadButton: some View {
+        Menu {
+            Button(action: { showCamera = true }) {
+                Label("Fénykép készítése", systemImage: "camera.fill")
+            }
+
+            Button(action: { showImagePicker = true }) {
+                Label("Galéria", systemImage: "photo.on.rectangle")
+            }
+
+            Button(action: { showDocumentPicker = true }) {
+                Label("PDF/Excel fájl", systemImage: "doc.fill")
+            }
+        } label: {
+            HStack {
+                Image(systemName: "doc.badge.plus")
+                    .font(.title2)
+
+                Text("Dokumentum feltöltése")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(Color.lidlBlue)
+            .cornerRadius(16)
+        }
+        .disabled(isProcessing)
+        .overlay {
+            if isProcessing {
+                ProgressView()
+                    .tint(.white)
+            }
+        }
+    }
+
+    // MARK: - Search Results
+    var searchResultsView: some View {
+        let allTermekek = bizonylatok.flatMap { bizonylat -> [(NfTermek, NfBizonylat)] in
+            guard let termekSet = bizonylat.termekekRelation as? Set<NfTermek> else { return [] }
+            return termekSet.map { ($0, bizonylat) }
+        }
+
+        let filteredTermekek = allTermekek.filter { termek, _ in
+            termek.cikkszam?.contains(searchText) ?? false
+        }
+
+        return VStack(spacing: 12) {
+            if filteredTermekek.isEmpty {
+                Text("Nincs találat")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .padding()
+            } else {
+                ForEach(filteredTermekek, id: \.0.id) { termek, bizonylat in
+                    TermekSearchCard(termek: termek, bizonylat: bizonylat)
+                        .padding(.horizontal)
                 }
             }
-            .onAppear {
-                // Scroll to current week
-                scrollToCurrentWeek(proxy: proxy, weeks: filteredWeeks)
-            }
-        }
-        .background(Color.adaptiveBackground(colorScheme: colorScheme))
         }
     }
 
-    // MARK: - Scroll to Current Week
-    func scrollToCurrentWeek(proxy: ScrollViewProxy, weeks: [NfHet]) {
-        let calendar = Calendar.current
-        let today = Date()
-        let currentWeekNumber = calendar.component(.weekOfYear, from: today)
+    // MARK: - Process Document
+    func processDocument(documentURL: URL) {
+        isProcessing = true
+        errorMessage = nil
 
-        // Find the week that contains today
-        if let currentWeek = weeks.first(where: { week in
-            guard let startDate = week.kezdoDatum,
-                  let endDate = week.vegDatum else { return false }
-            return today >= startDate && today <= endDate
-        }) {
-            // Scroll to current week with animation
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                withAnimation {
-                    proxy.scrollTo(currentWeek.id, anchor: .center)
+        Task {
+            do {
+                let claudeTermekek = try await ClaudeAPIService.shared.processNfVisszakuldesDocument(documentURL: documentURL)
+
+                await MainActor.run {
+                    saveToCoreData(claudeTermekek)
+
+                    // Cleanup temp file
+                    try? FileManager.default.removeItem(at: documentURL)
+                    selectedDocumentURL = nil
+                    isProcessing = false
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Feldolgozási hiba: \(error.localizedDescription)"
+                    showError = true
+                    isProcessing = false
+                    selectedDocumentURL = nil
                 }
             }
         }
     }
 
-    // MARK: - Month Grouping
-    struct MonthGroup {
-        let monthName: String
-        let monthNumber: Int
-        let weeks: [NfHet]
-    }
+    func processImage(_ image: UIImage) {
+        isProcessing = true
+        errorMessage = nil
 
-    func groupWeeksByMonth(_ weeks: [NfHet]) -> [MonthGroup] {
-        let calendar = Calendar.current
-        let dateFormatter = DateFormatter()
-        dateFormatter.locale = Locale(identifier: "hu_HU")
+        Task {
+            do {
+                let claudeTermekek = try await ClaudeAPIService.shared.processNfVisszakuldesImage(image: image)
 
-        // Group weeks by month of their start date
-        var monthDict: [Int: [NfHet]] = [:]
-
-        for week in weeks {
-            guard let startDate = week.kezdoDatum else { continue }
-            let month = calendar.component(.month, from: startDate)
-
-            if monthDict[month] == nil {
-                monthDict[month] = []
+                await MainActor.run {
+                    saveToCoreData(claudeTermekek)
+                    isProcessing = false
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = "Feldolgozási hiba: \(error.localizedDescription)"
+                    showError = true
+                    isProcessing = false
+                }
             }
-            monthDict[month]?.append(week)
-        }
-
-        // Convert to sorted array of MonthGroups
-        let sortedMonths = monthDict.keys.sorted()
-
-        return sortedMonths.map { monthNumber in
-            // Get month name
-            dateFormatter.dateFormat = "MMMM"
-            let monthDate = calendar.date(from: DateComponents(year: selectedYear, month: monthNumber, day: 1))!
-            let monthName = dateFormatter.string(from: monthDate)
-
-            return MonthGroup(
-                monthName: monthName,
-                monthNumber: monthNumber,
-                weeks: monthDict[monthNumber]?.sorted { $0.hetSzam < $1.hetSzam } ?? []
-            )
         }
     }
 
-    // MARK: - Generate Weeks
-    func generateWeeksIfNeeded() {
-        let existingWeeks = weeks.filter { $0.ev == selectedYear }
+    // MARK: - Save to Core Data
+    func saveToCoreData(_ claudeTermekek: [NfTermekResponse]) {
+        // Group by bizonylat
+        var bizonylatGroups: [String: [NfTermekResponse]] = [:]
 
-        if existingWeeks.count == 52 {
-            return // Already generated
+        for termek in claudeTermekek {
+            if bizonylatGroups[termek.bizonylat_szam] == nil {
+                bizonylatGroups[termek.bizonylat_szam] = []
+            }
+            bizonylatGroups[termek.bizonylat_szam]?.append(termek)
         }
 
-        // Delete existing weeks for this year first
-        for week in existingWeeks {
-            viewContext.delete(week)
-        }
+        // Create or update bizonylatok
+        for (bizonylatSzam, termekek) in bizonylatGroups {
+            // Check if bizonylat exists
+            let existingBizonylat = bizonylatok.first { $0.bizonylatSzam == bizonylatSzam }
 
-        // Generate 52 weeks
-        let calendar = Calendar.current
-        var dateComponents = DateComponents()
-        dateComponents.year = Int(selectedYear)
-        dateComponents.weekOfYear = 1
-        dateComponents.weekday = 2 // Monday
+            let bizonylat = existingBizonylat ?? NfBizonylat(context: viewContext)
+            if existingBizonylat == nil {
+                bizonylat.id = UUID()
+                bizonylat.bizonylatSzam = bizonylatSzam
+                bizonylat.kesz = false
+            }
 
-        for weekNumber in 1...52 {
-            dateComponents.weekOfYear = weekNumber
+            // Add termekek
+            for (index, termekData) in termekek.enumerated() {
+                // Check if termek already exists
+                let existingTermek = (bizonylat.termekekRelation as? Set<NfTermek>)?.first {
+                    $0.cikkszam == termekData.cikkszam
+                }
 
-            guard let weekStart = calendar.date(from: dateComponents) else { continue }
-            guard let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart) else { continue }
+                let termek = existingTermek ?? NfTermek(context: viewContext)
+                if existingTermek == nil {
+                    termek.id = UUID()
+                    termek.cikkszam = termekData.cikkszam
+                    termek.cikkMegnev = termekData.cikk_megnevezes
+                    termek.elviKeszlet = Int16(termekData.elvi_keszlet)
+                    termek.sorrend = Int16(index)
+                    termek.osszesen = 0
+                    termek.talalasok = ""
+                    termek.osszeszedve = false
+                    termek.bizonylat = bizonylat
+                }
+            }
 
-            let newWeek = NfHet(context: viewContext)
-            newWeek.id = UUID()
-            newWeek.ev = Int16(selectedYear)
-            newWeek.hetSzam = Int16(weekNumber)
-            newWeek.kezdoDatum = weekStart
-            newWeek.vegDatum = weekEnd
-            newWeek.befejezve = false
+            bizonylat.osszesTetel = Int16(termekek.count)
         }
 
         do {
             try viewContext.save()
         } catch {
-            print("Error generating weeks: \(error)")
+            print("Error saving: \(error)")
+            errorMessage = "Mentési hiba: \(error.localizedDescription)"
+            showError = true
         }
     }
 }
 
-// MARK: - Week Card Component
-struct WeekCard: View {
-    let week: NfHet
+// MARK: - Bizonylat Card
+struct BizonylatCard: View {
+    let bizonylat: NfBizonylat
     let onTap: () -> Void
-    let onUpload: () -> Void
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        HStack(spacing: 16) {
-            // Week info
+        HStack {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text("\(week.ev). \(week.hetSzam). hét")
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .foregroundColor(Color.adaptiveText(colorScheme: colorScheme))
+                    Image(systemName: "doc.text.fill")
+                        .foregroundColor(.lidlBlue)
 
-                    if week.befejezve {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                    }
+                    Text("Bizonylat: \(bizonylat.bizonylatSzam ?? "")")
+                        .font(.headline)
+                        .foregroundColor(.primary)
                 }
 
-                Text(formatDateRange(week.kezdoDatum ?? Date(), week.vegDatum ?? Date()))
+                Text("\(bizonylat.osszesTetel) termék")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
 
-                // Status
-                if let bizonylatokSet = week.bizonylatokRelation as? Set<NfBizonylat>,
-                   !bizonylatokSet.isEmpty {
-                    let bizonylatCount = bizonylatokSet.count
-                    let itemCount = bizonylatokSet.reduce(0) { $0 + Int($1.osszesTetel) }
+                // Progress
+                if let termekSet = bizonylat.termekekRelation as? Set<NfTermek> {
+                    let osszeszedett = termekSet.filter { $0.osszesen > 0 }.count
+                    let total = termekSet.count
 
-                    Text("\(bizonylatCount) bizonylat • \(itemCount) tétel")
-                        .font(.caption)
-                        .foregroundColor(.lidlBlue)
-                } else {
-                    Text("Üres")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    if osszeszedett > 0 {
+                        Text("\(osszeszedett)/\(total) feldolgozva")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    }
                 }
             }
 
             Spacer()
 
-            // Upload button
-            Button(action: onUpload) {
-                Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 28))
-                    .foregroundColor(.lidlYellow)
-            }
+            Image(systemName: "chevron.right")
+                .foregroundColor(.secondary)
         }
         .padding()
         .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
         .cornerRadius(12)
         .onTapGesture(perform: onTap)
     }
+}
 
-    func formatDateRange(_ start: Date, _ end: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "hu_HU")
-        formatter.dateFormat = "MMM d"
+// MARK: - Termek Search Card
+struct TermekSearchCard: View {
+    let termek: NfTermek
+    let bizonylat: NfBizonylat
+    @Environment(\.colorScheme) var colorScheme
+    @Environment(\.managedObjectContext) private var viewContext
 
-        let startStr = formatter.string(from: start)
-        let endStr = formatter.string(from: end)
+    @State private var mostTalaltam: String = ""
+    @FocusState private var isFocused: Bool
 
-        return "\(startStr)-\(endStr)"
+    var talalasokArray: [Int16] {
+        guard let talalasok = termek.talalasok, !talalasok.isEmpty else { return [] }
+        return talalasok.split(separator: ",").compactMap { Int16($0.trimmingCharacters(in: .whitespaces)) }
+    }
+
+    var osszesen: Int16 {
+        talalasokArray.reduce(0, +)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header
+            VStack(alignment: .leading, spacing: 4) {
+                Text(termek.cikkszam ?? "")
+                    .font(.title3)
+                    .fontWeight(.bold)
+
+                Text(termek.cikkMegnev ?? "")
+                    .font(.subheadline)
+                    .foregroundColor(.primary)
+
+                HStack {
+                    Text("Bizonylat: \(bizonylat.bizonylatSzam ?? "")")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Text("•")
+                        .foregroundColor(.secondary)
+
+                    Text("Elvi: \(termek.elviKeszlet > 0 ? "\(termek.elviKeszlet) db" : "nincs adat")")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Divider()
+
+            // Details
+            if !talalasokArray.isEmpty {
+                Text("Részletek: " + talalasokArray.map { "\($0)" }.joined(separator: " + "))
+                    .font(.subheadline)
+                    .foregroundColor(.primary)
+            }
+
+            // Total (big and centered)
+            if osszesen > 0 {
+                HStack {
+                    Spacer()
+                    HStack(spacing: 8) {
+                        Image(systemName: "shippingbox.fill")
+                        Text("ÖSSZESEN: \(osszesen) DB")
+                            .font(.title3)
+                            .fontWeight(.bold)
+                    }
+                    .foregroundColor(.lidlBlue)
+                    Spacer()
+                }
+                .padding(.vertical, 8)
+                .background(Color.lidlBlue.opacity(0.1))
+                .cornerRadius(8)
+            }
+
+            // Input
+            HStack {
+                Text("+")
+                    .font(.title3)
+                    .foregroundColor(.secondary)
+
+                TextField("Most találtam", text: $mostTalaltam)
+                    .keyboardType(.numberPad)
+                    .focused($isFocused)
+                    .font(.subheadline)
+
+                Text("db")
+                    .foregroundColor(.secondary)
+
+                if !mostTalaltam.isEmpty {
+                    Button("Mentés") {
+                        saveTalalas()
+                    }
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.green)
+                    .cornerRadius(8)
+                }
+            }
+            .padding()
+            .background(Color.adaptiveCardBackground(colorScheme: colorScheme).opacity(0.5))
+            .cornerRadius(8)
+        }
+        .padding()
+        .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
+        .cornerRadius(12)
+        .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+    }
+
+    func saveTalalas() {
+        guard let mennyiseg = Int16(mostTalaltam), mennyiseg > 0 else { return }
+
+        // Add to talalasok
+        var currentTalalasok = termek.talalasok ?? ""
+        if !currentTalalasok.isEmpty {
+            currentTalalasok += ","
+        }
+        currentTalalasok += "\(mennyiseg)"
+
+        termek.talalasok = currentTalalasok
+        termek.osszesen = osszesen + mennyiseg
+
+        do {
+            try viewContext.save()
+            mostTalaltam = ""
+            isFocused = false
+        } catch {
+            print("Error saving: \(error)")
+        }
     }
 }
