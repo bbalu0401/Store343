@@ -14,8 +14,9 @@ from typing import List, Dict, Any
 app = Flask(__name__)
 CORS(app)
 
-# Claude API client
-client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+# Claude API client - strip whitespace from API key to handle copy-paste errors
+api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+client = anthropic.Anthropic(api_key=api_key)
 
 @app.route('/health', methods=['GET'])
 def health_check():
