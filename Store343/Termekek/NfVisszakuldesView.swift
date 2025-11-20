@@ -91,30 +91,17 @@ struct NfVisszakuldesView: View {
             log("📂 showDocumentPicker: \(oldValue) → \(newValue)")
         }
         .onChange(of: selectedDocumentURL) { oldValue, newValue in
-            log("🔄 selectedDocumentURL onChange TRIGGERED!")
+            log("🔄 selectedDocumentURL onChange")
             log("   Old: \(oldValue?.lastPathComponent ?? "nil")")
             log("   New: \(newValue?.lastPathComponent ?? "nil")")
 
             if let documentURL = newValue {
                 log("✅ Valid document URL, processing...")
-
-                // DEBUG: Show alert that processing started
-                DispatchQueue.main.async {
-                    successMessage = "DEBUG: Processing started for \(documentURL.lastPathComponent)"
-                    showSuccess = true
-                }
-
                 processDocument(documentURL: documentURL)
             } else if oldValue != nil {
                 log("⚠️ URL reset to nil (after processing)")
             } else {
                 log("⚠️ Both old and new are nil")
-
-                // DEBUG: Show alert that onChange was called but URL is nil
-                DispatchQueue.main.async {
-                    errorMessage = "DEBUG: onChange called but newValue is NIL!"
-                    showError = true
-                }
             }
         }
         .alert("Hiba", isPresented: $showError) {
@@ -243,13 +230,6 @@ struct NfVisszakuldesView: View {
         Button(action: {
             log("🎯 Upload button tapped")
             showDocumentPicker = true
-            // Debug: Force show alert to verify button works
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                if !showDocumentPicker {
-                    errorMessage = "DEBUG: showDocumentPicker nem változott!"
-                    showError = true
-                }
-            }
         }) {
             HStack {
                 Image(systemName: "doc.badge.plus")
