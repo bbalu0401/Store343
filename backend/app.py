@@ -142,7 +142,7 @@ Important:
 - Each block is a separate topic"""
 
         message = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-3-5-sonnet-20240620",
             max_tokens=4096,
             messages=[
                 {
@@ -327,7 +327,7 @@ Important:
 
         print("🔵 [NF] Calling Claude API...")
         message = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-3-5-sonnet-20240620",
             max_tokens=8192,
             messages=[
                 {
