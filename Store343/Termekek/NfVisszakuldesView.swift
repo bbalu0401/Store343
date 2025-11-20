@@ -75,6 +75,14 @@ struct NfVisszakuldesView: View {
         .navigationBarHidden(true)
         .sheet(isPresented: $showDocumentPicker) {
             DocumentPicker(selectedDocumentURL: $selectedDocumentURL, allowedTypes: [.pdf, .spreadsheet, .commaSeparatedText])
+                .onDisappear {
+                    log("📋 Document picker closed")
+                }
+        }
+        .onChange(of: showDocumentPicker) { oldValue, newValue in
+            if newValue {
+                log("📂 Document picker opened")
+            }
         }
         .onChange(of: selectedDocumentURL) { oldValue, newValue in
             log("🔄 onChange triggered - newValue: \(String(describing: newValue?.lastPathComponent))")
@@ -93,6 +101,9 @@ struct NfVisszakuldesView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(successMessage ?? "Dokumentum sikeresen feldolgozva")
+        }
+        .onAppear {
+            log("🚀 NfVisszakuldesView appeared")
         }
         .overlay(alignment: .bottom) {
             if showDebugLog {
@@ -204,7 +215,10 @@ struct NfVisszakuldesView: View {
 
     // MARK: - Upload Button
     var uploadButton: some View {
-        Button(action: { showDocumentPicker = true }) {
+        Button(action: {
+            log("🎯 Upload button tapped")
+            showDocumentPicker = true
+        }) {
             HStack {
                 Image(systemName: "doc.badge.plus")
                     .font(.title2)
