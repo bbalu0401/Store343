@@ -171,9 +171,12 @@ def process_nf_visszakuldes():
     }
     """
     try:
+        print("🔵 [NF] Received request to /api/process-nf-visszakuldes")
         data = request.get_json()
+        print(f"🔵 [NF] Request data keys: {data.keys() if data else 'None'}")
 
         if not data or 'document_base64' not in data:
+            print("❌ [NF] Missing document_base64 in request")
             return jsonify({
                 "success": False,
                 "error": "Missing document_base64 in request"
@@ -181,6 +184,8 @@ def process_nf_visszakuldes():
 
         document_base64 = data['document_base64']
         document_type = data.get('document_type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        print(f"🔵 [NF] Document type: {document_type}")
+        print(f"🔵 [NF] Document base64 length: {len(document_base64)} chars")
 
         # Prepare messages for Claude
         prompt = """Analyze this Hungarian LIDL NF visszaküldés (return) document. Extract all product information.
@@ -207,6 +212,7 @@ Important:
 
         # Determine content type
         if document_type.startswith('image/'):
+            print("🔵 [NF] Using 'image' content type for Claude API")
             content_item = {
                 "type": "image",
                 "source": {
@@ -216,6 +222,7 @@ Important:
                 },
             }
         else:  # PDF or other documents
+            print("🔵 [NF] Using 'document' content type for Claude API")
             content_item = {
                 "type": "document",
                 "source": {
@@ -225,6 +232,7 @@ Important:
                 },
             }
 
+        print("🔵 [NF] Calling Claude API...")
         message = client.messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=8192,
@@ -242,17 +250,25 @@ Important:
             ],
         )
 
+        print("✅ [NF] Claude API call successful!")
+        print(f"🔵 [NF] Token usage - Input: {message.usage.input_tokens}, Output: {message.usage.output_tokens}")
+
         # Extract JSON from response
         response_text = message.content[0].text.strip()
+        print(f"🔵 [NF] Raw response length: {len(response_text)} chars")
+        print(f"🔵 [NF] Response preview: {response_text[:200]}...")
 
         # Remove markdown code blocks if present
         if response_text.startswith('```'):
+            print("🔵 [NF] Removing markdown code blocks from response")
             response_text = response_text.split('```')[1]
             if response_text.startswith('json'):
                 response_text = response_text[4:]
             response_text = response_text.strip()
 
+        print("🔵 [NF] Parsing JSON response...")
         termekek = json.loads(response_text)
+        print(f"✅ [NF] Successfully parsed {len(termekek)} termekek")
 
         return jsonify({
             "success": True,
@@ -264,14 +280,18 @@ Important:
         }), 200
 
     except json.JSONDecodeError as e:
+        print(f"❌ [NF] JSON decode error: {str(e)}")
         return jsonify({
             "success": False,
             "error": f"Failed to parse AI response as JSON: {str(e)}"
         }), 500
     except Exception as e:
+        print(f"❌ [NF] Exception: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             "success": False,
-            "error": str(e)
+            "error": f"{type(e).__name__}: {str(e)}"
         }), 500
 
 if __name__ == '__main__':
