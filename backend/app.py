@@ -367,19 +367,31 @@ Important:
                 json_text = json_text[bracket_index:]
                 print(f"🔵 [NF] Extracted JSON starting at position {bracket_index}")
 
-        # Also try to remove any trailing text after the JSON
-        if json_text.endswith(']'):
-            # Good, it ends with ]
-            pass
-        else:
-            # Find the last ] and cut there
-            bracket_index = json_text.rfind(']')
-            if bracket_index != -1:
-                json_text = json_text[:bracket_index + 1]
-                print(f"🔵 [NF] Trimmed response to end at position {bracket_index}")
+        # Check if response was truncated (hit max_tokens limit)
+        if message.usage.output_tokens >= 4090:  # Close to max_tokens
+            print("⚠️ [NF] Response may be truncated (hit max_tokens limit)")
+
+        # Try to fix incomplete JSON if response was truncated
+        if not json_text.endswith(']'):
+            print("⚠️ [NF] Response doesn't end with ], attempting to fix")
+
+            # Find the last complete object
+            # Look for the last complete "}" that closes an object
+            last_complete_obj = json_text.rfind('},')
+            if last_complete_obj != -1:
+                # Cut after the complete object and close the array
+                json_text = json_text[:last_complete_obj + 1] + '\n]'
+                print(f"🔵 [NF] Fixed truncated JSON at position {last_complete_obj}")
+            else:
+                # Try to find at least one complete object
+                last_brace = json_text.rfind('}')
+                if last_brace != -1:
+                    json_text = json_text[:last_brace + 1] + '\n]'
+                    print(f"🔵 [NF] Fixed truncated JSON at last brace {last_brace}")
 
         print("🔵 [NF] Parsing JSON response...")
         print(f"🔵 [NF] JSON text preview: {json_text[:200]}...")
+        print(f"🔵 [NF] JSON text suffix: ...{json_text[-100:]}")
         termekek = json.loads(json_text)
         print(f"✅ [NF] Successfully parsed {len(termekek)} termekek")
 
