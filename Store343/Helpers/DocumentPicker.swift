@@ -12,19 +12,25 @@ struct DocumentPicker: UIViewControllerRepresentable {
     init(selectedDocumentURL: Binding<URL?>, allowedTypes: [UTType] = [.pdf, .commaSeparatedText]) {
         self._selectedDocumentURL = selectedDocumentURL
         self.allowedTypes = allowedTypes
+        print("📄 DocumentPicker init with allowed types: \(allowedTypes.map { $0.identifier })")
     }
 
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        print("🏗️ makeUIViewController called")
         let picker = UIDocumentPickerViewController(forOpeningContentTypes: allowedTypes, asCopy: true)
         picker.delegate = context.coordinator
         picker.allowsMultipleSelection = false
+        print("✅ UIDocumentPickerViewController created with delegate set")
         return picker
     }
 
-    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
+    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {
+        print("🔄 updateUIViewController called")
+    }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(self)
+        print("👥 makeCoordinator called")
+        return Coordinator(self)
     }
 
     class Coordinator: NSObject, UIDocumentPickerDelegate {
@@ -32,9 +38,11 @@ struct DocumentPicker: UIViewControllerRepresentable {
 
         init(_ parent: DocumentPicker) {
             self.parent = parent
+            print("👤 Coordinator initialized")
         }
 
         func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            print("🎉 documentPicker delegate CALLED!")
             print("📎 Document picker: Selected \(urls.count) documents")
             guard let url = urls.first else {
                 print("⚠️ No URL selected")
@@ -86,6 +94,7 @@ struct DocumentPicker: UIViewControllerRepresentable {
         }
 
         func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+            print("🚫 documentPickerWasCancelled delegate CALLED!")
             print("❌ Document picker cancelled by user")
             DispatchQueue.main.async {
                 self.parent.presentationMode.wrappedValue.dismiss()
