@@ -35,11 +35,17 @@ struct DocumentPicker: UIViewControllerRepresentable {
         }
 
         func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-            guard let url = urls.first else { return }
+            print("📎 Document picker: Selected \(urls.count) documents")
+            guard let url = urls.first else {
+                print("⚠️ No URL selected")
+                return
+            }
+
+            print("📎 Selected file: \(url.lastPathComponent)")
 
             // Start accessing security-scoped resource
             guard url.startAccessingSecurityScopedResource() else {
-                print("Failed to access security-scoped resource")
+                print("❌ Failed to access security-scoped resource")
                 parent.presentationMode.wrappedValue.dismiss()
                 return
             }
@@ -60,9 +66,11 @@ struct DocumentPicker: UIViewControllerRepresentable {
                 // Copy file
                 try FileManager.default.copyItem(at: url, to: tempURL)
 
+                print("✅ File copied to temp: \(tempURL.path)")
                 parent.selectedDocumentURL = tempURL
+                print("✅ selectedDocumentURL set")
             } catch {
-                print("Error copying document: \(error)")
+                print("❌ Error copying document: \(error)")
             }
 
             parent.presentationMode.wrappedValue.dismiss()

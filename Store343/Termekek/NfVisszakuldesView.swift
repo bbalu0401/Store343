@@ -20,6 +20,8 @@ struct NfVisszakuldesView: View {
     @State private var isProcessing = false
     @State private var errorMessage: String? = nil
     @State private var showError = false
+    @State private var successMessage: String? = nil
+    @State private var showSuccess = false
 
     @State private var searchText = ""
     @State private var selectedBizonylat: NfBizonylat? = nil
@@ -70,6 +72,7 @@ struct NfVisszakuldesView: View {
             DocumentPicker(selectedDocumentURL: $selectedDocumentURL, allowedTypes: [.pdf, .spreadsheet, .commaSeparatedText])
         }
         .onChange(of: selectedDocumentURL) { oldValue, newValue in
+            print("🔄 onChange triggered - oldValue: \(String(describing: oldValue?.lastPathComponent)), newValue: \(String(describing: newValue?.lastPathComponent))")
             if let documentURL = newValue {
                 processDocument(documentURL: documentURL)
             }
@@ -78,6 +81,11 @@ struct NfVisszakuldesView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(errorMessage ?? "Ismeretlen hiba történt")
+        }
+        .alert("Siker", isPresented: $showSuccess) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(successMessage ?? "Dokumentum sikeresen feldolgozva")
         }
     }
 
@@ -196,22 +204,33 @@ struct NfVisszakuldesView: View {
 
     // MARK: - Process Document
     func processDocument(documentURL: URL) {
+        print("📄 Starting document processing: \(documentURL.lastPathComponent)")
         isProcessing = true
         errorMessage = nil
 
         Task {
             do {
+                print("🚀 Calling backend API...")
                 let claudeTermekek = try await ClaudeAPIService.shared.processNfVisszakuldesDocument(documentURL: documentURL)
+
+                print("✅ Backend returned \(claudeTermekek.count) termékek")
 
                 await MainActor.run {
                     saveToCoreData(claudeTermekek)
+
+                    let bizonylatCount = Set(claudeTermekek.map { $0.bizonylat_szam }).count
+                    successMessage = "Sikeresen feldolgozva: \(bizonylatCount) bizonylat, \(claudeTermekek.count) termék"
+                    showSuccess = true
 
                     // Cleanup temp file
                     try? FileManager.default.removeItem(at: documentURL)
                     selectedDocumentURL = nil
                     isProcessing = false
+
+                    print("💾 Saved to Core Data")
                 }
             } catch {
+                print("❌ Error processing document: \(error)")
                 await MainActor.run {
                     errorMessage = "Feldolgozási hiba: \(error.localizedDescription)"
                     showError = true
