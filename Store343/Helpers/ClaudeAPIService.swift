@@ -229,21 +229,29 @@ class ClaudeAPIService {
     /// - Parameter documentURL: URL of the PDF/document to process
     /// - Returns: Array of parsed NfTermekResponse objects
     func processNfVisszakuldesDocument(documentURL: URL) async throws -> [NfTermekResponse] {
+        print("📋 [API] processNfVisszakuldesDocument called with: \(documentURL.lastPathComponent)")
+
         // 1. Read document data
         guard let documentData = try? Data(contentsOf: documentURL) else {
+            print("❌ [API] Failed to read document data")
             throw APIError.imageConversionFailed
         }
+        print("✅ [API] Document data read: \(documentData.count) bytes")
 
         // 2. Determine MIME type
         let mimeType = getMimeType(for: documentURL)
+        print("📝 [API] MIME type: \(mimeType)")
 
         // 3. Encode to base64
         let base64String = documentData.base64EncodedString()
+        print("✅ [API] Base64 encoded: \(base64String.prefix(50))...")
 
         // 4. Create request
         guard let url = URL(string: "\(baseURL)/api/process-nf-visszakuldes") else {
+            print("❌ [API] Invalid URL")
             throw APIError.invalidURL
         }
+        print("🌐 [API] Request URL: \(url)")
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
@@ -255,33 +263,44 @@ class ClaudeAPIService {
             "document_type": mimeType
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        print("📦 [API] Request body size: \(request.httpBody?.count ?? 0) bytes")
 
         // 5. Make request
+        print("🚀 [API] Sending request to backend...")
         let (data, response) = try await URLSession.shared.data(for: request)
+        print("✅ [API] Received response: \(data.count) bytes")
 
         // 6. Validate response
         guard let httpResponse = response as? HTTPURLResponse else {
+            print("❌ [API] Invalid HTTP response")
             throw APIError.invalidResponse
         }
+        print("📊 [API] HTTP Status: \(httpResponse.statusCode)")
 
         guard httpResponse.statusCode == 200 else {
+            print("❌ [API] Server error: \(httpResponse.statusCode)")
             throw APIError.serverError(statusCode: httpResponse.statusCode)
         }
 
         // 7. Parse JSON response
         let decoder = JSONDecoder()
         let apiResponse = try decoder.decode(NfClaudeAPIResponse.self, from: data)
+        print("✅ [API] JSON decoded successfully")
 
         // 8. Check success
         guard apiResponse.success, let termekek = apiResponse.termekek else {
+            print("❌ [API] Processing failed: \(apiResponse.error ?? "Unknown error")")
             throw APIError.processingFailed(message: apiResponse.error ?? "Ismeretlen hiba történt")
         }
+        print("✅ [API] Success! Found \(termekek.count) termékek")
 
         // 9. Validate termekek
         guard !termekek.isEmpty else {
+            print("❌ [API] No termékek found")
             throw APIError.noInfoFound
         }
 
+        print("🎉 [API] Returning \(termekek.count) termékek")
         return termekek
     }
 
