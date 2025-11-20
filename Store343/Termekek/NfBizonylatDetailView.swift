@@ -39,10 +39,55 @@ struct NfBizonylatDetailView: View {
             // Content ScrollView
             ScrollView {
                 VStack(spacing: 0) {
-                    // CSAK A HEADER - EGYSZERŰEN
+                    // HEADER KÁRTYA - TELJES
                     VStack(spacing: 12) {
-                        Text(bizonylat.bizonylatSzam ?? "")
-                            .font(.title2)
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Bizonylat szám")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(bizonylat.bizonylatSzam ?? "")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                            }
+                            Spacer()
+                        }
+
+                        HStack(spacing: 20) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Termékek")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text("\(bizonylat.osszesTetel)")
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
+                            }
+
+                            Divider().frame(height: 40)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Feldolgozva")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                let feldolgozott = termekek.filter { $0.osszesen > 0 }.count
+                                Text("\(feldolgozott)/\(termekek.count)")
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(feldolgozott == termekek.count ? .green : .orange)
+                            }
+
+                            Divider().frame(height: 40)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Összesen")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text("\(osszesTermekMennyiseg) db")
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.blue)
+                            }
+                        }
                     }
                     .padding()
                     .background(Color.blue.opacity(0.1))
