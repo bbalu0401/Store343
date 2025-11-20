@@ -345,16 +345,42 @@ Important:
         print(f"🔵 [NF] Raw response length: {len(response_text)} chars")
         print(f"🔵 [NF] Response preview: {response_text[:200]}...")
 
+        # Try to extract JSON from response (Claude sometimes adds explanatory text)
+        json_text = response_text
+
         # Remove markdown code blocks if present
-        if response_text.startswith('```'):
+        if '```' in json_text:
             print("🔵 [NF] Removing markdown code blocks from response")
-            response_text = response_text.split('```')[1]
-            if response_text.startswith('json'):
-                response_text = response_text[4:]
-            response_text = response_text.strip()
+            parts = json_text.split('```')
+            if len(parts) >= 2:
+                json_text = parts[1]
+                if json_text.startswith('json'):
+                    json_text = json_text[4:]
+                json_text = json_text.strip()
+
+        # If response starts with text, try to find the JSON array
+        if not json_text.startswith('['):
+            print("🔵 [NF] Response has prefix text, extracting JSON array")
+            # Find the first [ and take everything from there
+            bracket_index = json_text.find('[')
+            if bracket_index != -1:
+                json_text = json_text[bracket_index:]
+                print(f"🔵 [NF] Extracted JSON starting at position {bracket_index}")
+
+        # Also try to remove any trailing text after the JSON
+        if json_text.endswith(']'):
+            # Good, it ends with ]
+            pass
+        else:
+            # Find the last ] and cut there
+            bracket_index = json_text.rfind(']')
+            if bracket_index != -1:
+                json_text = json_text[:bracket_index + 1]
+                print(f"🔵 [NF] Trimmed response to end at position {bracket_index}")
 
         print("🔵 [NF] Parsing JSON response...")
-        termekek = json.loads(response_text)
+        print(f"🔵 [NF] JSON text preview: {json_text[:200]}...")
+        termekek = json.loads(json_text)
         print(f"✅ [NF] Successfully parsed {len(termekek)} termekek")
 
         return jsonify({
