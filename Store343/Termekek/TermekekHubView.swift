@@ -8,7 +8,7 @@ struct TermekekHubView: View {
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Group {
                 if selectedType == nil {
                     TermekekSelectionView(selectedType: $selectedType)
@@ -20,6 +20,7 @@ struct TermekekHubView: View {
                     NfVisszakuldesView(selectedType: $selectedType)
                 }
             }
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
