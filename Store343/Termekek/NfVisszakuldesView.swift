@@ -31,39 +31,42 @@ struct NfVisszakuldesView: View {
     @State private var showDebugLog = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Content
+        Group {
             if selectedBizonylat == nil {
-                // Navigation Bar (csak lista nézetben!)
-                HStack {
-                    Button(action: {
-                        selectedType = nil
-                    }) {
-                        HStack {
-                            Image(systemName: "chevron.left")
-                            Text("Vissza")
+                VStack(spacing: 0) {
+                    // Navigation Bar (csak lista nézetben!)
+                    HStack {
+                        Button(action: {
+                            selectedType = nil
+                        }) {
+                            HStack {
+                                Image(systemName: "chevron.left")
+                                Text("Vissza")
+                            }
+                            .foregroundColor(.lidlBlue)
                         }
-                        .foregroundColor(.lidlBlue)
+
+                        Spacer()
+
+                        Text("NF visszaküldés")
+                            .font(.headline)
+
+                        Spacer()
+
+                        // Debug button
+                        Button(action: { showDebugLog.toggle() }) {
+                            Image(systemName: "ladybug.fill")
+                                .foregroundColor(showDebugLog ? .green : .secondary)
+                        }
                     }
+                    .padding()
+                    .background(Color.adaptiveBackground(colorScheme: colorScheme))
+                    .overlay(Divider().background(Color.secondary.opacity(0.3)), alignment: .bottom)
 
-                    Spacer()
-
-                    Text("NF visszaküldés")
-                        .font(.headline)
-
-                    Spacer()
-
-                    // Debug button
-                    Button(action: { showDebugLog.toggle() }) {
-                        Image(systemName: "ladybug.fill")
-                            .foregroundColor(showDebugLog ? .green : .secondary)
-                    }
+                    mainView
                 }
-                .padding()
                 .background(Color.adaptiveBackground(colorScheme: colorScheme))
-                .overlay(Divider().background(Color.secondary.opacity(0.3)), alignment: .bottom)
-
-                mainView
+                .navigationBarHidden(true)
             } else if let bizonylat = selectedBizonylat {
                 NfBizonylatDetailView(
                     bizonylat: bizonylat,
@@ -71,8 +74,6 @@ struct NfVisszakuldesView: View {
                 )
             }
         }
-        .background(Color.adaptiveBackground(colorScheme: colorScheme))
-        .navigationBarHidden(true)
         .sheet(isPresented: $showDocumentPicker) {
             DocumentPicker(
                 selectedDocumentURL: $selectedDocumentURL,
