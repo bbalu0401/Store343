@@ -21,6 +21,7 @@ struct TermekekHubView: View {
                 }
             }
         }
+        .navigationViewStyle(.stack)
     }
 }
 
