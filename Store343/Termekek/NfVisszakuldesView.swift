@@ -3,6 +3,7 @@
 
 import SwiftUI
 import CoreData
+import UniformTypeIdentifiers
 
 struct NfVisszakuldesView: View {
     @Binding var selectedType: String?
