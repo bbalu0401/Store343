@@ -32,37 +32,37 @@ struct NfVisszakuldesView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Navigation Bar
-            HStack {
-                Button(action: {
-                    selectedType = nil
-                }) {
-                    HStack {
-                        Image(systemName: "chevron.left")
-                        Text("Vissza")
-                    }
-                    .foregroundColor(.lidlBlue)
-                }
-
-                Spacer()
-
-                Text("NF visszaküldés")
-                    .font(.headline)
-
-                Spacer()
-
-                // Debug button
-                Button(action: { showDebugLog.toggle() }) {
-                    Image(systemName: "ladybug.fill")
-                        .foregroundColor(showDebugLog ? .green : .secondary)
-                }
-            }
-            .padding()
-            .background(Color.adaptiveBackground(colorScheme: colorScheme))
-            .overlay(Divider().background(Color.secondary.opacity(0.3)), alignment: .bottom)
-
             // Content
             if selectedBizonylat == nil {
+                // Navigation Bar (csak lista nézetben!)
+                HStack {
+                    Button(action: {
+                        selectedType = nil
+                    }) {
+                        HStack {
+                            Image(systemName: "chevron.left")
+                            Text("Vissza")
+                        }
+                        .foregroundColor(.lidlBlue)
+                    }
+
+                    Spacer()
+
+                    Text("NF visszaküldés")
+                        .font(.headline)
+
+                    Spacer()
+
+                    // Debug button
+                    Button(action: { showDebugLog.toggle() }) {
+                        Image(systemName: "ladybug.fill")
+                            .foregroundColor(showDebugLog ? .green : .secondary)
+                    }
+                }
+                .padding()
+                .background(Color.adaptiveBackground(colorScheme: colorScheme))
+                .overlay(Divider().background(Color.secondary.opacity(0.3)), alignment: .bottom)
+
                 mainView
             } else if let bizonylat = selectedBizonylat {
                 NfBizonylatDetailView(
