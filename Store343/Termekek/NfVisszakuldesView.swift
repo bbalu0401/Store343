@@ -31,7 +31,7 @@ struct NfVisszakuldesView: View {
     @State private var showDebugLog = false
 
     var body: some View {
-        Group {
+        ZStack {
             if selectedBizonylat == nil {
                 VStack(spacing: 0) {
                     // Navigation Bar (csak lista nézetben!)
@@ -67,16 +67,14 @@ struct NfVisszakuldesView: View {
                 }
                 .background(Color.adaptiveBackground(colorScheme: colorScheme))
                 .navigationBarHidden(true)
-            } else if let bizonylat = selectedBizonylat {
-                VStack(spacing: 0) {
-                    NfBizonylatDetailView(
-                        bizonylat: bizonylat,
-                        onBack: { selectedBizonylat = nil }
-                    )
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .background(Color.adaptiveBackground(colorScheme: colorScheme))
-                .navigationBarHidden(true)
+            }
+
+            if let bizonylat = selectedBizonylat {
+                NfBizonylatDetailView(
+                    bizonylat: bizonylat,
+                    onBack: { selectedBizonylat = nil }
+                )
+                .transition(.move(edge: .trailing))
             }
         }
         .sheet(isPresented: $showDocumentPicker) {
