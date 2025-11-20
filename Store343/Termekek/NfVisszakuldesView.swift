@@ -26,6 +26,10 @@ struct NfVisszakuldesView: View {
     @State private var searchText = ""
     @State private var selectedBizonylat: NfBizonylat? = nil
 
+    // Debug
+    @State private var debugLogs: [String] = []
+    @State private var showDebugLog = false
+
     var body: some View {
         VStack(spacing: 0) {
             // Navigation Bar
@@ -47,8 +51,11 @@ struct NfVisszakuldesView: View {
 
                 Spacer()
 
-                // Placeholder for balance
-                Color.clear.frame(width: 80)
+                // Debug button
+                Button(action: { showDebugLog.toggle() }) {
+                    Image(systemName: "ladybug.fill")
+                        .foregroundColor(showDebugLog ? .green : .secondary)
+                }
             }
             .padding()
             .background(Color.adaptiveBackground(colorScheme: colorScheme))
@@ -65,13 +72,16 @@ struct NfVisszakuldesView: View {
             }
         }
         .background(Color.adaptiveBackground(colorScheme: colorScheme))
+        .navigationBarHidden(true)
         .sheet(isPresented: $showDocumentPicker) {
             DocumentPicker(selectedDocumentURL: $selectedDocumentURL, allowedTypes: [.pdf, .spreadsheet, .commaSeparatedText])
         }
         .onChange(of: selectedDocumentURL) { oldValue, newValue in
-            print("🔄 onChange triggered - oldValue: \(String(describing: oldValue?.lastPathComponent)), newValue: \(String(describing: newValue?.lastPathComponent))")
+            log("🔄 onChange triggered - newValue: \(String(describing: newValue?.lastPathComponent))")
             if let documentURL = newValue {
                 processDocument(documentURL: documentURL)
+            } else {
+                log("⚠️ selectedDocumentURL is nil")
             }
         }
         .alert("Hiba", isPresented: $showError) {
@@ -83,6 +93,51 @@ struct NfVisszakuldesView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(successMessage ?? "Dokumentum sikeresen feldolgozva")
+        }
+        .overlay(alignment: .bottom) {
+            if showDebugLog {
+                VStack(spacing: 0) {
+                    HStack {
+                        Text("Debug Log")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                        Spacer()
+                        Button("Clear") {
+                            debugLogs.removeAll()
+                        }
+                        .foregroundColor(.yellow)
+                        Button("Close") {
+                            showDebugLog = false
+                        }
+                        .foregroundColor(.white)
+                    }
+                    .padding()
+                    .background(Color.black.opacity(0.9))
+
+                    ScrollView {
+                        ScrollViewReader { proxy in
+                            VStack(alignment: .leading, spacing: 4) {
+                                ForEach(Array(debugLogs.enumerated()), id: \.offset) { index, log in
+                                    Text(log)
+                                        .font(.system(size: 10, design: .monospaced))
+                                        .foregroundColor(.green)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .id(index)
+                                }
+                            }
+                            .padding()
+                            .onChange(of: debugLogs.count) { _, _ in
+                                if let lastIndex = debugLogs.indices.last {
+                                    proxy.scrollTo(lastIndex, anchor: .bottom)
+                                }
+                            }
+                        }
+                    }
+                    .frame(height: 300)
+                    .background(Color.black.opacity(0.9))
+                }
+                .transition(.move(edge: .bottom))
+            }
         }
     }
 
@@ -199,35 +254,43 @@ struct NfVisszakuldesView: View {
         }
     }
 
+    // MARK: - Debug Helper
+    func log(_ message: String) {
+        print(message)
+        DispatchQueue.main.async {
+            self.debugLogs.append("[\(Date().formatted(date: .omitted, time: .standard))] \(message)")
+        }
+    }
+
     // MARK: - Process Document
     func processDocument(documentURL: URL) {
-        print("📄 Starting document processing: \(documentURL.lastPathComponent)")
+        log("📄 Starting document processing: \(documentURL.lastPathComponent)")
         isProcessing = true
         errorMessage = nil
 
         Task {
             do {
-                print("🚀 Calling backend API...")
+                log("🚀 Calling backend API...")
                 let claudeTermekek = try await ClaudeAPIService.shared.processNfVisszakuldesDocument(documentURL: documentURL)
 
-                print("✅ Backend returned \(claudeTermekek.count) termékek")
+                log("✅ Backend returned \(claudeTermekek.count) termékek")
 
                 await MainActor.run {
+                    log("💾 Saving to Core Data...")
                     saveToCoreData(claudeTermekek)
 
                     let bizonylatCount = Set(claudeTermekek.map { $0.bizonylat_szam }).count
                     successMessage = "Sikeresen feldolgozva: \(bizonylatCount) bizonylat, \(claudeTermekek.count) termék"
                     showSuccess = true
+                    log("✅ Saved! \(bizonylatCount) bizonylat, \(claudeTermekek.count) termék")
 
                     // Cleanup temp file
                     try? FileManager.default.removeItem(at: documentURL)
                     selectedDocumentURL = nil
                     isProcessing = false
-
-                    print("💾 Saved to Core Data")
                 }
             } catch {
-                print("❌ Error processing document: \(error)")
+                log("❌ Error: \(error.localizedDescription)")
                 await MainActor.run {
                     errorMessage = "Feldolgozási hiba: \(error.localizedDescription)"
                     showError = true

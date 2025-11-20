@@ -8,15 +8,17 @@ struct TermekekHubView: View {
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        Group {
-            if selectedType == nil {
-                TermekekSelectionView(selectedType: $selectedType)
-            } else if selectedType == "elosztasok" {
-                ElosztasokView(selectedType: $selectedType)
-            } else if selectedType == "hianycikkek" {
-                HianycikkekView(selectedType: $selectedType)
-            } else if selectedType == "nf_visszakuldes" {
-                NfVisszakuldesView(selectedType: $selectedType)
+        NavigationView {
+            Group {
+                if selectedType == nil {
+                    TermekekSelectionView(selectedType: $selectedType)
+                } else if selectedType == "elosztasok" {
+                    ElosztasokView(selectedType: $selectedType)
+                } else if selectedType == "hianycikkek" {
+                    HianycikkekView(selectedType: $selectedType)
+                } else if selectedType == "nf_visszakuldes" {
+                    NfVisszakuldesView(selectedType: $selectedType)
+                }
             }
         }
     }
