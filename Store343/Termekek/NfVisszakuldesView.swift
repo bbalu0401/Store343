@@ -75,21 +75,22 @@ struct NfVisszakuldesView: View {
         .navigationBarHidden(true)
         .sheet(isPresented: $showDocumentPicker) {
             DocumentPicker(selectedDocumentURL: $selectedDocumentURL, allowedTypes: [.pdf, .spreadsheet, .commaSeparatedText])
-                .onDisappear {
-                    log("📋 Document picker closed")
-                }
         }
         .onChange(of: showDocumentPicker) { oldValue, newValue in
-            if newValue {
-                log("📂 Document picker opened")
-            }
+            log("📂 showDocumentPicker: \(oldValue) → \(newValue)")
         }
         .onChange(of: selectedDocumentURL) { oldValue, newValue in
-            log("🔄 onChange triggered - newValue: \(String(describing: newValue?.lastPathComponent))")
+            log("🔄 selectedDocumentURL onChange")
+            log("   Old: \(oldValue?.lastPathComponent ?? "nil")")
+            log("   New: \(newValue?.lastPathComponent ?? "nil")")
+
             if let documentURL = newValue {
+                log("✅ Valid document URL, processing...")
                 processDocument(documentURL: documentURL)
+            } else if oldValue != nil {
+                log("⚠️ URL reset to nil (after processing)")
             } else {
-                log("⚠️ selectedDocumentURL is nil")
+                log("⚠️ Both old and new are nil")
             }
         }
         .alert("Hiba", isPresented: $showError) {
