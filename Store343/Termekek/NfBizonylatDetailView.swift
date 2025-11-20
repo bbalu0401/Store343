@@ -43,8 +43,8 @@ struct NfBizonylatDetailView: View {
             .background(Color.adaptiveBackground(colorScheme: colorScheme))
             .overlay(Divider().background(Color.secondary.opacity(0.3)), alignment: .bottom)
 
-                // Header
-                VStack(spacing: 12) {
+            // Header
+            VStack(spacing: 12) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Bizonylat szám")
