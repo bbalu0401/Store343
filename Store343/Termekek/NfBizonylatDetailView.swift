@@ -117,7 +117,7 @@ struct NfBizonylatDetailView: View {
                     }
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(Color.adaptiveBackground(colorScheme: colorScheme))
         }
         .background(Color.adaptiveBackground(colorScheme: colorScheme))
