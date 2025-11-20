@@ -74,7 +74,14 @@ struct NfVisszakuldesView: View {
         .background(Color.adaptiveBackground(colorScheme: colorScheme))
         .navigationBarHidden(true)
         .sheet(isPresented: $showDocumentPicker) {
-            DocumentPicker(selectedDocumentURL: $selectedDocumentURL, allowedTypes: [.pdf, .spreadsheet, .commaSeparatedText])
+            DocumentPicker(
+                selectedDocumentURL: $selectedDocumentURL,
+                allowedTypes: [
+                    UTType(filenameExtension: "xlsx")!,
+                    UTType(filenameExtension: "xls")!,
+                    .commaSeparatedText
+                ]
+            )
         }
         .onChange(of: showDocumentPicker) { oldValue, newValue in
             log("📂 showDocumentPicker: \(oldValue) → \(newValue)")
