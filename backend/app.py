@@ -10,6 +10,8 @@ import os
 import base64
 import json
 from typing import List, Dict, Any
+from openpyxl import load_workbook
+from io import BytesIO
 
 app = Flask(__name__)
 CORS(app)
@@ -17,6 +19,58 @@ CORS(app)
 # Claude API client - strip whitespace from API key to handle copy-paste errors
 api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 client = anthropic.Anthropic(api_key=api_key)
+
+def excel_to_text(base64_data: str) -> str:
+    """
+    Convert Excel file (base64) to formatted text for Claude API
+
+    Args:
+        base64_data: Base64 encoded Excel file
+
+    Returns:
+        Formatted text representation of the Excel data
+    """
+    try:
+        # Decode base64
+        excel_bytes = base64.b64decode(base64_data)
+
+        # Load workbook
+        wb = load_workbook(filename=BytesIO(excel_bytes), data_only=True)
+
+        # Get first sheet (or active sheet)
+        ws = wb.active
+
+        # Convert to text format
+        text_lines = []
+        text_lines.append(f"Excel Document: {wb.sheetnames[0] if wb.sheetnames else 'Sheet1'}")
+        text_lines.append("=" * 80)
+        text_lines.append("")
+
+        # Process rows
+        for row_idx, row in enumerate(ws.iter_rows(values_only=True), start=1):
+            # Skip completely empty rows
+            if all(cell is None or str(cell).strip() == '' for cell in row):
+                continue
+
+            # Format row data
+            row_data = []
+            for cell in row:
+                if cell is None:
+                    row_data.append("")
+                else:
+                    row_data.append(str(cell).strip())
+
+            # Join cells with | separator
+            text_lines.append(" | ".join(row_data))
+
+        text_lines.append("")
+        text_lines.append("=" * 80)
+        text_lines.append(f"Total rows: {ws.max_row}")
+
+        return "\n".join(text_lines)
+
+    except Exception as e:
+        raise Exception(f"Failed to parse Excel file: {str(e)}")
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -211,27 +265,65 @@ Important:
 - bizonylat_szam should be a string
 - elvi_keszlet should be an integer (0 if empty/null)"""
 
-        # Determine content type
+        # Determine content type and prepare for Claude API
+        content_items = []
+
         if document_type.startswith('image/'):
+            # Image type - use image content
             print("🔵 [NF] Using 'image' content type for Claude API")
-            content_item = {
+            content_items.append({
                 "type": "image",
                 "source": {
                     "type": "base64",
                     "media_type": document_type,
                     "data": document_base64,
                 },
-            }
-        else:  # PDF or other documents
-            print("🔵 [NF] Using 'document' content type for Claude API")
-            content_item = {
+            })
+        elif document_type == 'application/pdf':
+            # PDF type - use document content
+            print("🔵 [NF] Using 'document' content type for Claude API (PDF)")
+            content_items.append({
                 "type": "document",
                 "source": {
                     "type": "base64",
                     "media_type": document_type,
                     "data": document_base64,
                 },
-            }
+            })
+        elif 'spreadsheet' in document_type or 'excel' in document_type:
+            # Excel type - convert to text first
+            print("🔵 [NF] Converting Excel to text for Claude API")
+            try:
+                excel_text = excel_to_text(document_base64)
+                print(f"🔵 [NF] Excel converted to text: {len(excel_text)} chars")
+                print(f"🔵 [NF] Excel preview:\n{excel_text[:500]}...")
+
+                # Add as text content with the Excel data
+                content_items.append({
+                    "type": "text",
+                    "text": f"Here is the Excel spreadsheet data:\n\n{excel_text}\n\n{prompt}"
+                })
+            except Exception as e:
+                print(f"❌ [NF] Excel conversion failed: {str(e)}")
+                raise Exception(f"Failed to parse Excel file: {str(e)}")
+        else:
+            # Other document types - try as document
+            print(f"🔵 [NF] Using 'document' content type for {document_type}")
+            content_items.append({
+                "type": "document",
+                "source": {
+                    "type": "base64",
+                    "media_type": document_type,
+                    "data": document_base64,
+                },
+            })
+
+        # Add prompt as text (unless already added with Excel data)
+        if len(content_items) > 0 and content_items[0].get("type") != "text":
+            content_items.append({
+                "type": "text",
+                "text": prompt
+            })
 
         print("🔵 [NF] Calling Claude API...")
         message = client.messages.create(
@@ -240,13 +332,7 @@ Important:
             messages=[
                 {
                     "role": "user",
-                    "content": [
-                        content_item,
-                        {
-                            "type": "text",
-                            "text": prompt
-                        }
-                    ],
+                    "content": content_items,
                 }
             ],
         )
