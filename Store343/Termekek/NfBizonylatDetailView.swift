@@ -19,30 +19,29 @@ struct NfBizonylatDetailView: View {
     }
 
     var body: some View {
-        GeometryReader { geometry in
-            VStack(spacing: 0) {
-                // Navigation Bar
-                HStack {
-                    Button(action: onBack) {
-                        HStack {
-                            Image(systemName: "chevron.left")
-                            Text("Vissza")
-                        }
-                        .foregroundColor(.lidlBlue)
+        VStack(spacing: 0) {
+            // Navigation Bar
+            HStack {
+                Button(action: onBack) {
+                    HStack {
+                        Image(systemName: "chevron.left")
+                        Text("Vissza")
                     }
-
-                    Spacer()
-
-                    Text("Bizonylat")
-                        .font(.headline)
-
-                    Spacer()
-
-                    Color.clear.frame(width: 80)
+                    .foregroundColor(.lidlBlue)
                 }
-                .padding()
-                .background(Color.adaptiveBackground(colorScheme: colorScheme))
-                .overlay(Divider().background(Color.secondary.opacity(0.3)), alignment: .bottom)
+
+                Spacer()
+
+                Text("NF visszaküldés")
+                    .font(.headline)
+
+                Spacer()
+
+                Color.clear.frame(width: 80)
+            }
+            .padding()
+            .background(Color.adaptiveBackground(colorScheme: colorScheme))
+            .overlay(Divider().background(Color.secondary.opacity(0.3)), alignment: .bottom)
 
                 // Header
                 VStack(spacing: 12) {
@@ -105,23 +104,20 @@ struct NfBizonylatDetailView: View {
             .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
             .padding()
 
-                // Termékek List
-                ScrollView {
-                    LazyVStack(spacing: 12) {
-                        ForEach(termekek, id: \.id) { termek in
-                            TermekDetailCard(termek: termek, bizonylat: bizonylat)
-                                .padding(.horizontal)
-                        }
-
-                        Color.clear.frame(height: 20)
+            // Termékek List
+            ScrollView {
+                LazyVStack(spacing: 12) {
+                    ForEach(termekek, id: \.id) { termek in
+                        TermekDetailCard(termek: termek, bizonylat: bizonylat)
+                            .padding(.horizontal)
                     }
+
+                    Color.clear.frame(height: 20)
                 }
             }
-            .background(Color.adaptiveBackground(colorScheme: colorScheme))
-            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
         }
+        .background(Color.adaptiveBackground(colorScheme: colorScheme))
         .navigationBarHidden(true)
-        .edgesIgnoringSafeArea(.top)
     }
 }
 
