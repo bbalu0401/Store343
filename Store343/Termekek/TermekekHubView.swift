@@ -8,7 +8,7 @@ struct TermekekHubView: View {
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Group {
                 if selectedType == nil {
                     TermekekSelectionView(selectedType: $selectedType)
@@ -20,6 +20,7 @@ struct TermekekHubView: View {
                     NfVisszakuldesView(selectedType: $selectedType)
                 }
             }
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
@@ -30,50 +31,68 @@ struct TermekekSelectionView: View {
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        VStack(spacing: 16) {
-            Text("Válaszd ki a termékezési feladatot")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .padding(.top)
+        VStack(spacing: 0) {
+            // Custom Navigation Bar
+            HStack {
+                Spacer()
 
-            // Elosztások
-            TermekekTypeCard(
-                icon: "square.grid.2x2",
-                title: "Elosztások",
-                subtitle: "Termékek elosztása és áthelyezése",
-                color: .lidlBlue
-            )
-            .onTapGesture {
-                selectedType = "elosztasok"
+                Text("Termékek")
+                    .font(.headline)
+
+                Spacer()
             }
-
-            // Hiánycikkek
-            TermekekTypeCard(
-                icon: "cart.badge.minus",
-                title: "Hiánycikkek",
-                subtitle: "Hiányzó és elfogyott termékek",
-                color: .lidlRed
+            .padding()
+            .background(Color.adaptiveBackground(colorScheme: colorScheme))
+            .overlay(
+                Divider()
+                    .background(Color.secondary.opacity(0.3)),
+                alignment: .bottom
             )
-            .onTapGesture {
-                selectedType = "hianycikkek"
-            }
 
-            // Nf visszaküldés
-            TermekekTypeCard(
-                icon: "arrow.uturn.backward.circle",
-                title: "Nf visszaküldés",
-                subtitle: "Számlák és visszaküldések kezelése",
-                color: .lidlYellow
-            )
-            .onTapGesture {
-                selectedType = "nf_visszakuldes"
-            }
+            VStack(spacing: 16) {
+                Text("Válaszd ki a termékezési feladatot")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .padding(.top)
 
-            Spacer()
+                // Elosztások
+                TermekekTypeCard(
+                    icon: "square.grid.2x2",
+                    title: "Elosztások",
+                    subtitle: "Termékek elosztása és áthelyezése",
+                    color: .lidlBlue
+                )
+                .onTapGesture {
+                    selectedType = "elosztasok"
+                }
+
+                // Hiánycikkek
+                TermekekTypeCard(
+                    icon: "cart.badge.minus",
+                    title: "Hiánycikkek",
+                    subtitle: "Hiányzó és elfogyott termékek",
+                    color: .lidlRed
+                )
+                .onTapGesture {
+                    selectedType = "hianycikkek"
+                }
+
+                // Nf visszaküldés
+                TermekekTypeCard(
+                    icon: "arrow.uturn.backward.circle",
+                    title: "Nf visszaküldés",
+                    subtitle: "Számlák és visszaküldések kezelése",
+                    color: .lidlYellow
+                )
+                .onTapGesture {
+                    selectedType = "nf_visszakuldes"
+                }
+
+                Spacer()
+            }
+            .padding()
         }
-        .padding()
         .background(Color.adaptiveBackground(colorScheme: colorScheme))
-        .navigationTitle("Termékek")
     }
 }
 

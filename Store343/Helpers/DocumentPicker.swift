@@ -44,6 +44,22 @@ struct DocumentPicker: UIViewControllerRepresentable {
         func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
             print("🎉 documentPicker delegate CALLED!")
             print("📎 Document picker: Selected \(urls.count) documents")
+
+            // DEBUG: Create alert to show delegate was called
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                let alert = UIAlertController(
+                    title: "DEBUG",
+                    message: "Delegate called! \(urls.count) files",
+                    preferredStyle: .alert
+                )
+                alert.addAction(UIAlertAction(title: "OK", style: .default))
+                if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let window = scene.windows.first,
+                   let rootVC = window.rootViewController {
+                    rootVC.present(alert, animated: true)
+                }
+            }
+
             guard let url = urls.first else {
                 print("⚠️ No URL selected")
                 return
@@ -54,6 +70,22 @@ struct DocumentPicker: UIViewControllerRepresentable {
             // Start accessing security-scoped resource
             guard url.startAccessingSecurityScopedResource() else {
                 print("❌ Failed to access security-scoped resource")
+
+                // DEBUG: Show alert for security-scoped resource failure
+                DispatchQueue.main.async {
+                    let alert = UIAlertController(
+                        title: "DEBUG ERROR",
+                        message: "Failed to access security-scoped resource",
+                        preferredStyle: .alert
+                    )
+                    alert.addAction(UIAlertAction(title: "OK", style: .default))
+                    if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                       let window = scene.windows.first,
+                       let rootVC = window.rootViewController {
+                        rootVC.present(alert, animated: true)
+                    }
+                }
+
                 parent.presentationMode.wrappedValue.dismiss()
                 return
             }
@@ -76,6 +108,21 @@ struct DocumentPicker: UIViewControllerRepresentable {
 
                 print("✅ File copied to temp: \(tempURL.path)")
 
+                // DEBUG: Show alert for successful copy
+                DispatchQueue.main.async {
+                    let alert = UIAlertController(
+                        title: "DEBUG SUCCESS",
+                        message: "File copied: \(tempURL.lastPathComponent)",
+                        preferredStyle: .alert
+                    )
+                    alert.addAction(UIAlertAction(title: "OK", style: .default))
+                    if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                       let window = scene.windows.first,
+                       let rootVC = window.rootViewController {
+                        rootVC.present(alert, animated: true)
+                    }
+                }
+
                 // IMPORTANT: Set binding on main thread after successful copy
                 DispatchQueue.main.async {
                     print("🔄 Setting selectedDocumentURL to: \(tempURL.lastPathComponent)")
@@ -84,6 +131,21 @@ struct DocumentPicker: UIViewControllerRepresentable {
                 }
             } catch {
                 print("❌ Error copying document: \(error)")
+
+                // DEBUG: Show alert for copy error
+                DispatchQueue.main.async {
+                    let alert = UIAlertController(
+                        title: "DEBUG COPY ERROR",
+                        message: "Error: \(error.localizedDescription)",
+                        preferredStyle: .alert
+                    )
+                    alert.addAction(UIAlertAction(title: "OK", style: .default))
+                    if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                       let window = scene.windows.first,
+                       let rootVC = window.rootViewController {
+                        rootVC.present(alert, animated: true)
+                    }
+                }
             }
 
             // Dismiss on main thread

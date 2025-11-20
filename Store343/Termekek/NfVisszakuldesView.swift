@@ -31,48 +31,52 @@ struct NfVisszakuldesView: View {
     @State private var showDebugLog = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Navigation Bar
-            HStack {
-                Button(action: {
-                    selectedType = nil
-                }) {
-                    HStack {
-                        Image(systemName: "chevron.left")
-                        Text("Vissza")
-                    }
-                    .foregroundColor(.lidlBlue)
-                }
-
-                Spacer()
-
-                Text("NF visszaküldés")
-                    .font(.headline)
-
-                Spacer()
-
-                // Debug button
-                Button(action: { showDebugLog.toggle() }) {
-                    Image(systemName: "ladybug.fill")
-                        .foregroundColor(showDebugLog ? .green : .secondary)
-                }
-            }
-            .padding()
-            .background(Color.adaptiveBackground(colorScheme: colorScheme))
-            .overlay(Divider().background(Color.secondary.opacity(0.3)), alignment: .bottom)
-
-            // Content
+        ZStack {
             if selectedBizonylat == nil {
-                mainView
-            } else if let bizonylat = selectedBizonylat {
+                VStack(spacing: 0) {
+                    // Navigation Bar (csak lista nézetben!)
+                    HStack {
+                        Button(action: {
+                            selectedType = nil
+                        }) {
+                            HStack {
+                                Image(systemName: "chevron.left")
+                                Text("Vissza")
+                            }
+                            .foregroundColor(.lidlBlue)
+                        }
+
+                        Spacer()
+
+                        Text("NF visszaküldés")
+                            .font(.headline)
+
+                        Spacer()
+
+                        // Debug button
+                        Button(action: { showDebugLog.toggle() }) {
+                            Image(systemName: "ladybug.fill")
+                                .foregroundColor(showDebugLog ? .green : .secondary)
+                        }
+                    }
+                    .padding()
+                    .background(Color.adaptiveBackground(colorScheme: colorScheme))
+                    .overlay(Divider().background(Color.secondary.opacity(0.3)), alignment: .bottom)
+
+                    mainView
+                }
+                .background(Color.adaptiveBackground(colorScheme: colorScheme))
+                .navigationBarHidden(true)
+            }
+
+            if let bizonylat = selectedBizonylat {
                 NfBizonylatDetailView(
                     bizonylat: bizonylat,
                     onBack: { selectedBizonylat = nil }
                 )
+                .transition(.move(edge: .trailing))
             }
         }
-        .background(Color.adaptiveBackground(colorScheme: colorScheme))
-        .navigationBarHidden(true)
         .sheet(isPresented: $showDocumentPicker) {
             DocumentPicker(
                 selectedDocumentURL: $selectedDocumentURL,
@@ -87,17 +91,30 @@ struct NfVisszakuldesView: View {
             log("📂 showDocumentPicker: \(oldValue) → \(newValue)")
         }
         .onChange(of: selectedDocumentURL) { oldValue, newValue in
-            log("🔄 selectedDocumentURL onChange")
+            log("🔄 selectedDocumentURL onChange TRIGGERED!")
             log("   Old: \(oldValue?.lastPathComponent ?? "nil")")
             log("   New: \(newValue?.lastPathComponent ?? "nil")")
 
             if let documentURL = newValue {
                 log("✅ Valid document URL, processing...")
+
+                // DEBUG: Show alert that processing started
+                DispatchQueue.main.async {
+                    successMessage = "DEBUG: Processing started for \(documentURL.lastPathComponent)"
+                    showSuccess = true
+                }
+
                 processDocument(documentURL: documentURL)
             } else if oldValue != nil {
                 log("⚠️ URL reset to nil (after processing)")
             } else {
                 log("⚠️ Both old and new are nil")
+
+                // DEBUG: Show alert that onChange was called but URL is nil
+                DispatchQueue.main.async {
+                    errorMessage = "DEBUG: onChange called but newValue is NIL!"
+                    showError = true
+                }
             }
         }
         .alert("Hiba", isPresented: $showError) {
@@ -226,6 +243,13 @@ struct NfVisszakuldesView: View {
         Button(action: {
             log("🎯 Upload button tapped")
             showDocumentPicker = true
+            // Debug: Force show alert to verify button works
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                if !showDocumentPicker {
+                    errorMessage = "DEBUG: showDocumentPicker nem változott!"
+                    showError = true
+                }
+            }
         }) {
             HStack {
                 Image(systemName: "doc.badge.plus")

@@ -10,6 +10,8 @@ import os
 import base64
 import json
 from typing import List, Dict, Any
+from openpyxl import load_workbook
+from io import BytesIO
 
 app = Flask(__name__)
 CORS(app)
@@ -17,6 +19,58 @@ CORS(app)
 # Claude API client - strip whitespace from API key to handle copy-paste errors
 api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 client = anthropic.Anthropic(api_key=api_key)
+
+def excel_to_text(base64_data: str) -> str:
+    """
+    Convert Excel file (base64) to formatted text for Claude API
+
+    Args:
+        base64_data: Base64 encoded Excel file
+
+    Returns:
+        Formatted text representation of the Excel data
+    """
+    try:
+        # Decode base64
+        excel_bytes = base64.b64decode(base64_data)
+
+        # Load workbook
+        wb = load_workbook(filename=BytesIO(excel_bytes), data_only=True)
+
+        # Get first sheet (or active sheet)
+        ws = wb.active
+
+        # Convert to text format
+        text_lines = []
+        text_lines.append(f"Excel Document: {wb.sheetnames[0] if wb.sheetnames else 'Sheet1'}")
+        text_lines.append("=" * 80)
+        text_lines.append("")
+
+        # Process rows
+        for row_idx, row in enumerate(ws.iter_rows(values_only=True), start=1):
+            # Skip completely empty rows
+            if all(cell is None or str(cell).strip() == '' for cell in row):
+                continue
+
+            # Format row data
+            row_data = []
+            for cell in row:
+                if cell is None:
+                    row_data.append("")
+                else:
+                    row_data.append(str(cell).strip())
+
+            # Join cells with | separator
+            text_lines.append(" | ".join(row_data))
+
+        text_lines.append("")
+        text_lines.append("=" * 80)
+        text_lines.append(f"Total rows: {ws.max_row}")
+
+        return "\n".join(text_lines)
+
+    except Exception as e:
+        raise Exception(f"Failed to parse Excel file: {str(e)}")
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -88,7 +142,7 @@ Important:
 - Each block is a separate topic"""
 
         message = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
+            model="claude-3-haiku-20240307",
             max_tokens=4096,
             messages=[
                 {
@@ -211,42 +265,74 @@ Important:
 - bizonylat_szam should be a string
 - elvi_keszlet should be an integer (0 if empty/null)"""
 
-        # Determine content type
+        # Determine content type and prepare for Claude API
+        content_items = []
+
         if document_type.startswith('image/'):
+            # Image type - use image content
             print("🔵 [NF] Using 'image' content type for Claude API")
-            content_item = {
+            content_items.append({
                 "type": "image",
                 "source": {
                     "type": "base64",
                     "media_type": document_type,
                     "data": document_base64,
                 },
-            }
-        else:  # PDF or other documents
-            print("🔵 [NF] Using 'document' content type for Claude API")
-            content_item = {
+            })
+        elif document_type == 'application/pdf':
+            # PDF type - use document content
+            print("🔵 [NF] Using 'document' content type for Claude API (PDF)")
+            content_items.append({
                 "type": "document",
                 "source": {
                     "type": "base64",
                     "media_type": document_type,
                     "data": document_base64,
                 },
-            }
+            })
+        elif 'spreadsheet' in document_type or 'excel' in document_type:
+            # Excel type - convert to text first
+            print("🔵 [NF] Converting Excel to text for Claude API")
+            try:
+                excel_text = excel_to_text(document_base64)
+                print(f"🔵 [NF] Excel converted to text: {len(excel_text)} chars")
+                print(f"🔵 [NF] Excel preview:\n{excel_text[:500]}...")
+
+                # Add as text content with the Excel data
+                content_items.append({
+                    "type": "text",
+                    "text": f"Here is the Excel spreadsheet data:\n\n{excel_text}\n\n{prompt}"
+                })
+            except Exception as e:
+                print(f"❌ [NF] Excel conversion failed: {str(e)}")
+                raise Exception(f"Failed to parse Excel file: {str(e)}")
+        else:
+            # Other document types - try as document
+            print(f"🔵 [NF] Using 'document' content type for {document_type}")
+            content_items.append({
+                "type": "document",
+                "source": {
+                    "type": "base64",
+                    "media_type": document_type,
+                    "data": document_base64,
+                },
+            })
+
+        # Add prompt as text (unless already added with Excel data)
+        if len(content_items) > 0 and content_items[0].get("type") != "text":
+            content_items.append({
+                "type": "text",
+                "text": prompt
+            })
 
         print("🔵 [NF] Calling Claude API...")
         message = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=8192,
+            model="claude-3-haiku-20240307",
+            max_tokens=4096,
             messages=[
                 {
                     "role": "user",
-                    "content": [
-                        content_item,
-                        {
-                            "type": "text",
-                            "text": prompt
-                        }
-                    ],
+                    "content": content_items,
                 }
             ],
         )
@@ -259,16 +345,54 @@ Important:
         print(f"🔵 [NF] Raw response length: {len(response_text)} chars")
         print(f"🔵 [NF] Response preview: {response_text[:200]}...")
 
+        # Try to extract JSON from response (Claude sometimes adds explanatory text)
+        json_text = response_text
+
         # Remove markdown code blocks if present
-        if response_text.startswith('```'):
+        if '```' in json_text:
             print("🔵 [NF] Removing markdown code blocks from response")
-            response_text = response_text.split('```')[1]
-            if response_text.startswith('json'):
-                response_text = response_text[4:]
-            response_text = response_text.strip()
+            parts = json_text.split('```')
+            if len(parts) >= 2:
+                json_text = parts[1]
+                if json_text.startswith('json'):
+                    json_text = json_text[4:]
+                json_text = json_text.strip()
+
+        # If response starts with text, try to find the JSON array
+        if not json_text.startswith('['):
+            print("🔵 [NF] Response has prefix text, extracting JSON array")
+            # Find the first [ and take everything from there
+            bracket_index = json_text.find('[')
+            if bracket_index != -1:
+                json_text = json_text[bracket_index:]
+                print(f"🔵 [NF] Extracted JSON starting at position {bracket_index}")
+
+        # Check if response was truncated (hit max_tokens limit)
+        if message.usage.output_tokens >= 4090:  # Close to max_tokens
+            print("⚠️ [NF] Response may be truncated (hit max_tokens limit)")
+
+        # Try to fix incomplete JSON if response was truncated
+        if not json_text.endswith(']'):
+            print("⚠️ [NF] Response doesn't end with ], attempting to fix")
+
+            # Find the last complete object
+            # Look for the last complete "}" that closes an object
+            last_complete_obj = json_text.rfind('},')
+            if last_complete_obj != -1:
+                # Cut after the complete object and close the array
+                json_text = json_text[:last_complete_obj + 1] + '\n]'
+                print(f"🔵 [NF] Fixed truncated JSON at position {last_complete_obj}")
+            else:
+                # Try to find at least one complete object
+                last_brace = json_text.rfind('}')
+                if last_brace != -1:
+                    json_text = json_text[:last_brace + 1] + '\n]'
+                    print(f"🔵 [NF] Fixed truncated JSON at last brace {last_brace}")
 
         print("🔵 [NF] Parsing JSON response...")
-        termekek = json.loads(response_text)
+        print(f"🔵 [NF] JSON text preview: {json_text[:200]}...")
+        print(f"🔵 [NF] JSON text suffix: ...{json_text[-100:]}")
+        termekek = json.loads(json_text)
         print(f"✅ [NF] Successfully parsed {len(termekek)} termekek")
 
         return jsonify({
