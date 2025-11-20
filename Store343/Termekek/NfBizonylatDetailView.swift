@@ -20,93 +20,44 @@ struct NfBizonylatDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Navigation
+            // Navigation (egyszerű verzió)
             HStack {
                 Button(action: onBack) {
                     HStack {
                         Image(systemName: "chevron.left")
                         Text("Vissza")
                     }
-                    .foregroundColor(.lidlBlue)
+                    .foregroundColor(.blue)
                 }
                 Spacer()
                 Text("NF visszaküldés")
-                    .font(.headline)
                 Spacer()
-                Color.clear.frame(width: 80)
             }
             .padding()
-            .background(Color.adaptiveBackground(colorScheme: colorScheme))
-            .overlay(Divider().background(Color.secondary.opacity(0.3)), alignment: .bottom)
+            .background(Color.gray.opacity(0.2))
 
-            // HEADER KÁRTYA
-            VStack(spacing: 12) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Bizonylat szám")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+            // Content ScrollView
+            ScrollView {
+                VStack(spacing: 0) {
+                    // CSAK A HEADER - EGYSZERŰEN
+                    VStack(spacing: 12) {
                         Text(bizonylat.bizonylatSzam ?? "")
                             .font(.title2)
-                            .fontWeight(.bold)
                     }
-                    Spacer()
-                }
+                    .padding()
+                    .background(Color.blue.opacity(0.1))
 
-                HStack(spacing: 20) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Termékek")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text("\(bizonylat.osszesTetel)")
-                            .font(.title3)
-                            .fontWeight(.semibold)
-                    }
-
-                    Divider().frame(height: 40)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Feldolgozva")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        let feldolgozott = termekek.filter { $0.osszesen > 0 }.count
-                        Text("\(feldolgozott)/\(termekek.count)")
-                            .font(.title3)
-                            .fontWeight(.semibold)
-                            .foregroundColor(feldolgozott == termekek.count ? .green : .orange)
-                    }
-
-                    Divider().frame(height: 40)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Összesen")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text("\(osszesTermekMennyiseg) db")
-                            .font(.title3)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.lidlBlue)
+                    // Termékek
+                    LazyVStack(spacing: 12) {
+                        ForEach(termekek, id: \.id) { termek in
+                            TermekDetailCard(termek: termek, bizonylat: bizonylat)
+                                .padding(.horizontal)
+                        }
                     }
                 }
             }
-            .padding()
-            .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
-
-            // Termékek lista
-            ScrollView {
-                LazyVStack(spacing: 12) {
-                    ForEach(termekek, id: \.id) { termek in
-                        TermekDetailCard(termek: termek, bizonylat: bizonylat)
-                            .padding(.horizontal)
-                    }
-                    Color.clear.frame(height: 20)
-                }
-            }
-
-            Spacer()
         }
         .background(Color.white)
-        .navigationBarHidden(true)
     }
 }
 
