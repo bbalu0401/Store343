@@ -19,109 +19,110 @@ struct NfBizonylatDetailView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Navigation Bar
-            HStack {
-                Button(action: onBack) {
-                    HStack {
-                        Image(systemName: "chevron.left")
-                        Text("Vissza")
-                    }
-                    .foregroundColor(.lidlBlue)
-                }
-
-                Spacer()
-
-                Text("NF visszaküldés")
-                    .font(.headline)
-
-                Spacer()
-
-                Color.clear.frame(width: 80)
-            }
-            .padding()
-            .background(Color.adaptiveBackground(colorScheme: colorScheme))
-            .overlay(Divider().background(Color.secondary.opacity(0.3)), alignment: .bottom)
-
-            // Content
+        GeometryReader { geometry in
             VStack(spacing: 0) {
-                // Header
-                VStack(spacing: 12) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Bizonylat szám")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-
-                            Text(bizonylat.bizonylatSzam ?? "")
-                                .font(.title2)
-                                .fontWeight(.bold)
+                // Navigation Bar
+                HStack {
+                    Button(action: onBack) {
+                        HStack {
+                            Image(systemName: "chevron.left")
+                            Text("Vissza")
                         }
-
-                        Spacer()
+                        .foregroundColor(.lidlBlue)
                     }
 
-                    HStack(spacing: 20) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Termékek")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                    Spacer()
 
-                            Text("\(bizonylat.osszesTetel)")
-                                .font(.title3)
-                                .fontWeight(.semibold)
-                        }
+                    Text("NF visszaküldés")
+                        .font(.headline)
 
-                        Divider()
-                            .frame(height: 40)
+                    Spacer()
 
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Feldolgozva")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-
-                            let feldolgozott = termekek.filter { $0.osszesen > 0 }.count
-                            Text("\(feldolgozott)/\(termekek.count)")
-                                .font(.title3)
-                                .fontWeight(.semibold)
-                                .foregroundColor(feldolgozott == termekek.count ? .green : .orange)
-                        }
-
-                        Divider()
-                            .frame(height: 40)
-
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Összesen")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-
-                            Text("\(osszesTermekMennyiseg) db")
-                                .font(.title3)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.lidlBlue)
-                        }
-                    }
+                    Color.clear.frame(width: 80)
                 }
                 .padding()
-                .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
+                .background(Color.adaptiveBackground(colorScheme: colorScheme))
+                .overlay(Divider().background(Color.secondary.opacity(0.3)), alignment: .bottom)
 
-                // Termékek List
-                ScrollView {
-                    LazyVStack(spacing: 12) {
-                        ForEach(termekek, id: \.id) { termek in
-                            TermekDetailCard(termek: termek, bizonylat: bizonylat)
-                                .padding(.horizontal)
+                // Content
+                VStack(spacing: 0) {
+                    // Header
+                    VStack(spacing: 12) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Bizonylat szám")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+
+                                Text(bizonylat.bizonylatSzam ?? "")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                            }
+
+                            Spacer()
                         }
 
-                        Color.clear.frame(height: 20)
+                        HStack(spacing: 20) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Termékek")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+
+                                Text("\(bizonylat.osszesTetel)")
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
+                            }
+
+                            Divider()
+                                .frame(height: 40)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Feldolgozva")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+
+                                let feldolgozott = termekek.filter { $0.osszesen > 0 }.count
+                                Text("\(feldolgozott)/\(termekek.count)")
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(feldolgozott == termekek.count ? .green : .orange)
+                            }
+
+                            Divider()
+                                .frame(height: 40)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Összesen")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+
+                                Text("\(osszesTermekMennyiseg) db")
+                                    .font(.title3)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.lidlBlue)
+                            }
+                        }
+                    }
+                    .padding()
+                    .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
+
+                    // Termékek List
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(termekek, id: \.id) { termek in
+                                TermekDetailCard(termek: termek, bizonylat: bizonylat)
+                                    .padding(.horizontal)
+                            }
+                            Color.clear.frame(height: 20)
+                        }
                     }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .background(Color.adaptiveBackground(colorScheme: colorScheme))
+            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color.adaptiveBackground(colorScheme: colorScheme))
+        .edgesIgnoringSafeArea(.bottom)
         .navigationBarHidden(true)
     }
 }
