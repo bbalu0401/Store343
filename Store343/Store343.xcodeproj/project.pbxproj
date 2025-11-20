@@ -24,13 +24,11 @@
 		BA333A242EBFCEE40012B6AA /* WeekCalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA333A222EBFCEE00012B6AA /* WeekCalendarView.swift */; };
 		BA333A2A2EBFCFC20012B6AA /* Store343.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = BA333A282EBFCFC20012B6AA /* Store343.xcdatamodeld */; };
 		BA333A2B2EBFD0010012B6AA /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA333A2D2EBFD0030012B6AA /* ImagePicker.swift */; };
-		BA333A2C2EBFD0020012B6AA /* OCRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA333A2E2EBFD0040012B6AA /* OCRService.swift */; };
 		FBCE0625A10D433FA025BE55 /* ClaudeAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 536A6DBCF93643FB844C7C0D /* ClaudeAPIService.swift */; };
 		BA333A312EBFD0200012B6AA /* TermekekHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA333A302EBFD01F0012B6AA /* TermekekHubView.swift */; };
 		BA333A332EBFD0220012B6AA /* ElosztasokView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA333A322EBFD0210012B6AA /* ElosztasokView.swift */; };
 		BA333A352EBFD0240012B6AA /* HianycikkekView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA333A342EBFD0230012B6AA /* HianycikkekView.swift */; };
 		BA333A372EBFD0260012B6AA /* NfVisszakuldesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA333A362EBFD0250012B6AA /* NfVisszakuldesView.swift */; };
-		BA333A392EBFD0280012B6AA /* NfOCRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA333A382EBFD0270012B6AA /* NfOCRService.swift */; };
 		BA333A3B2EBFD02A0012B6AA /* NfBizonylatListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA333A3A2EBFD0290012B6AA /* NfBizonylatListView.swift */; };
 		BA333A3D2EBFD02C0012B6AA /* NfTermekListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA333A3C2EBFD02B0012B6AA /* NfTermekListView.swift */; };
 		BA333A3F2EBFD02E0012B6AA /* NfOCRProcessView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA333A3E2EBFD02D0012B6AA /* NfOCRProcessView.swift */; };
@@ -58,13 +56,11 @@
 		BA333A222EBFCEE00012B6AA /* WeekCalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekCalendarView.swift; sourceTree = "<group>"; };
 		BA333A292EBFCFC20012B6AA /* Store343.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Store343.xcdatamodel; sourceTree = "<group>"; };
 		BA333A2D2EBFD0030012B6AA /* ImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePicker.swift; sourceTree = "<group>"; };
-		BA333A2E2EBFD0040012B6AA /* OCRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OCRService.swift; sourceTree = "<group>"; };
 		536A6DBCF93643FB844C7C0D /* ClaudeAPIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeAPIService.swift; sourceTree = "<group>"; };
 		BA333A302EBFD01F0012B6AA /* TermekekHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TermekekHubView.swift; sourceTree = "<group>"; };
 		BA333A322EBFD0210012B6AA /* ElosztasokView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElosztasokView.swift; sourceTree = "<group>"; };
 		BA333A342EBFD0230012B6AA /* HianycikkekView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HianycikkekView.swift; sourceTree = "<group>"; };
 		BA333A362EBFD0250012B6AA /* NfVisszakuldesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NfVisszakuldesView.swift; sourceTree = "<group>"; };
-		BA333A382EBFD0270012B6AA /* NfOCRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NfOCRService.swift; sourceTree = "<group>"; };
 		BA333A3A2EBFD0290012B6AA /* NfBizonylatListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NfBizonylatListView.swift; sourceTree = "<group>"; };
 		BA333A3C2EBFD02B0012B6AA /* NfTermekListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NfTermekListView.swift; sourceTree = "<group>"; };
 		BA333A3E2EBFD02D0012B6AA /* NfOCRProcessView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NfOCRProcessView.swift; sourceTree = "<group>"; };
@@ -195,9 +191,7 @@
 			isa = PBXGroup;
 			children = (
 				BA333A2D2EBFD0030012B6AA /* ImagePicker.swift */,
-				BA333A2E2EBFD0040012B6AA /* OCRService.swift */,
 				536A6DBCF93643FB844C7C0D /* ClaudeAPIService.swift */,
-				BA333A382EBFD0270012B6AA /* NfOCRService.swift */,
 			);
 			path = Helpers;
 			sourceTree = "<group>";
@@ -296,13 +290,11 @@
 				BA3339B92EBFC52B0012B6AA /* InfoSelectionView.swift in Sources */,
 				BA3339DA2EBFC7A20012B6AA /* HomeView.swift in Sources */,
 				BA333A2B2EBFD0010012B6AA /* ImagePicker.swift in Sources */,
-				BA333A2C2EBFD0020012B6AA /* OCRService.swift in Sources */,
 				FBCE0625A10D433FA025BE55 /* ClaudeAPIService.swift in Sources */,
 				BA333A312EBFD0200012B6AA /* TermekekHubView.swift in Sources */,
 				BA333A332EBFD0220012B6AA /* ElosztasokView.swift in Sources */,
 				BA333A352EBFD0240012B6AA /* HianycikkekView.swift in Sources */,
 				BA333A372EBFD0260012B6AA /* NfVisszakuldesView.swift in Sources */,
-				BA333A392EBFD0280012B6AA /* NfOCRService.swift in Sources */,
 				BA333A3B2EBFD02A0012B6AA /* NfBizonylatListView.swift in Sources */,
 				BA333A3D2EBFD02C0012B6AA /* NfTermekListView.swift in Sources */,
 				BA333A3F2EBFD02E0012B6AA /* NfOCRProcessView.swift in Sources */,
