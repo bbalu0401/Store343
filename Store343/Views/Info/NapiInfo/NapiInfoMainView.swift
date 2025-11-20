@@ -17,9 +17,11 @@ struct NapiInfoMainView: View {
     @State private var calendarView: CalendarViewType = .week
     @State private var selectedInfo: NapiInfo? = nil
     @State private var showImagePicker = false
+    @State private var showDocumentPicker = false
     @State private var showSourceSelector = false
     @State private var imageSourceType: UIImagePickerController.SourceType = .camera
     @State private var selectedImage: UIImage? = nil
+    @State private var selectedDocumentURL: URL? = nil
     @State private var processingOCR = false
     @State private var selectedInfoForUpload: NapiInfo? = nil
     @State private var infoToDelete: NapiInfo? = nil
@@ -229,16 +231,27 @@ struct NapiInfoMainView: View {
                 imageSourceType = .photoLibrary
                 showImagePicker = true
             }
+            Button("📄 PDF/Dokumentum") {
+                showDocumentPicker = true
+            }
             Button("Mégse", role: .cancel) {}
         } message: {
-            Text("Válassz képforrást")
+            Text("Válassz forrást")
         }
         .sheet(isPresented: $showImagePicker) {
             ImagePicker(selectedImage: $selectedImage, sourceType: imageSourceType)
         }
+        .sheet(isPresented: $showDocumentPicker) {
+            DocumentPicker(selectedDocumentURL: $selectedDocumentURL)
+        }
         .onChange(of: selectedImage) { oldValue, newValue in
             if let image = newValue, let info = selectedInfoForUpload {
                 processOCR(image: image, for: info)
+            }
+        }
+        .onChange(of: selectedDocumentURL) { oldValue, newValue in
+            if let documentURL = newValue, let info = selectedInfoForUpload {
+                processDocument(documentURL: documentURL, for: info)
             }
         }
         .alert("Dokumentum törlése", isPresented: $showDeleteConfirmation) {
@@ -441,8 +454,8 @@ struct NapiInfoMainView: View {
                 // Update UI on main thread
                 await MainActor.run {
                     // Convert Claude API blocks to our internal format with Hungarian text corrections
-                    let ocrBlocks = blocks.map { block -> OCRService.NapiInfoBlock in
-                        return OCRService.NapiInfoBlock(
+                    let ocrBlocks = blocks.map { block -> NapiInfoBlock in
+                        return NapiInfoBlock(
                             tema: ClaudeAPIService.correctHungarianText(block.tema),
                             erintett: ClaudeAPIService.correctHungarianText(block.erintett),
                             hatarido: block.hatarido.map { ClaudeAPIService.correctHungarianText($0) },
@@ -472,6 +485,63 @@ struct NapiInfoMainView: View {
                     processingOCR = false
                     selectedImage = nil
                     selectedInfoForUpload = nil
+
+                    // Show error to user
+                    showErrorAlert(message: error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    // MARK: - Document Processing (Claude API)
+    func processDocument(documentURL: URL, for info: NapiInfo) {
+        processingOCR = true
+
+        Task {
+            do {
+                // Call Claude API for document processing
+                let blocks = try await ClaudeAPIService.shared.processNapiInfoDocument(documentURL: documentURL)
+
+                // Update UI on main thread
+                await MainActor.run {
+                    // Convert Claude API blocks to our internal format with Hungarian text corrections
+                    let ocrBlocks = blocks.map { block -> NapiInfoBlock in
+                        return NapiInfoBlock(
+                            tema: ClaudeAPIService.correctHungarianText(block.tema),
+                            erintett: ClaudeAPIService.correctHungarianText(block.erintett),
+                            hatarido: block.hatarido.map { ClaudeAPIService.correctHungarianText($0) },
+                            tartalom: ClaudeAPIService.correctHungarianText(block.tartalom),
+                            termekLista: nil,
+                            index: 0
+                        )
+                    }
+
+                    // Store ALL info blocks within ONE document
+                    updateNapiInfoFromMultipleBlocks(info, blocks: ocrBlocks)
+
+                    try? viewContext.save()
+
+                    processingOCR = false
+                    selectedDocumentURL = nil
+                    selectedInfoForUpload = nil
+
+                    // Clean up temporary file
+                    try? FileManager.default.removeItem(at: documentURL)
+
+                    // Show detail view after processing
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        selectedInfo = info
+                    }
+                }
+            } catch {
+                // Handle errors on main thread
+                await MainActor.run {
+                    processingOCR = false
+                    selectedDocumentURL = nil
+                    selectedInfoForUpload = nil
+
+                    // Clean up temporary file
+                    try? FileManager.default.removeItem(at: documentURL)
 
                     // Show error to user
                     showErrorAlert(message: error.localizedDescription)
@@ -514,7 +584,7 @@ struct NapiInfoMainView: View {
     }
 
     // MARK: - Update NapiInfo from Info Block
-    private func updateNapiInfoFromBlock(_ info: NapiInfo, block: OCRService.NapiInfoBlock) {
+    private func updateNapiInfoFromBlock(_ info: NapiInfo, block: NapiInfoBlock) {
         info.feldolgozva = true
         info.tema = block.tema
         info.erintett = block.erintett
@@ -530,7 +600,7 @@ struct NapiInfoMainView: View {
     }
 
     // MARK: - Update NapiInfo from Multiple Blocks
-    private func updateNapiInfoFromMultipleBlocks(_ info: NapiInfo, blocks: [OCRService.NapiInfoBlock]) {
+    private func updateNapiInfoFromMultipleBlocks(_ info: NapiInfo, blocks: [NapiInfoBlock]) {
         info.feldolgozva = true
 
         // Load existing blocks from JSON (if any)

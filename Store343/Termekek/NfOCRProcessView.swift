@@ -15,9 +15,11 @@ struct NfOCRProcessView: View {
     @State private var currentPage = 0
     @State private var allResults: [[NfOCRResult]] = []
     @State private var showImagePicker = false
+    @State private var showDocumentPicker = false
     @State private var showSourceSelector = false
     @State private var imageSourceType: UIImagePickerController.SourceType = .camera
     @State private var selectedImage: UIImage? = nil
+    @State private var selectedDocumentURL: URL? = nil
     @State private var processingOCR = false
     @State private var showMorePagesDialog = false
     @State private var pageProcessed = false
@@ -165,8 +167,8 @@ struct NfOCRProcessView: View {
         .background(Color.adaptiveBackground(colorScheme: colorScheme))
         .actionSheet(isPresented: $showSourceSelector) {
             ActionSheet(
-                title: Text("Fotó feltöltése"),
-                message: Text("Válassz képforrást"),
+                title: Text("Dokumentum feltöltése"),
+                message: Text("Válassz forrást"),
                 buttons: [
                     .default(Text("📷 Fotó készítése")) {
                         imageSourceType = .camera
@@ -176,6 +178,9 @@ struct NfOCRProcessView: View {
                         imageSourceType = .photoLibrary
                         showImagePicker = true
                     },
+                    .default(Text("📄 PDF/Dokumentum")) {
+                        showDocumentPicker = true
+                    },
                     .cancel(Text("Mégse"))
                 ]
             )
@@ -183,9 +188,17 @@ struct NfOCRProcessView: View {
         .sheet(isPresented: $showImagePicker) {
             ImagePicker(selectedImage: $selectedImage, sourceType: imageSourceType)
         }
+        .sheet(isPresented: $showDocumentPicker) {
+            DocumentPicker(selectedDocumentURL: $selectedDocumentURL)
+        }
         .onChange(of: selectedImage) { oldValue, newValue in
             if let image = newValue {
                 processOCR(image: image)
+            }
+        }
+        .onChange(of: selectedDocumentURL) { oldValue, newValue in
+            if let documentURL = newValue {
+                processDocument(documentURL: documentURL)
             }
         }
         .overlay(
@@ -217,7 +230,7 @@ struct NfOCRProcessView: View {
         )
     }
 
-    // MARK: - Process OCR
+    // MARK: - Process OCR (Image)
     func processOCR(image: UIImage) {
         processingOCR = true
 
@@ -275,6 +288,70 @@ struct NfOCRProcessView: View {
         }
     }
 
+    // MARK: - Process Document (PDF)
+    func processDocument(documentURL: URL) {
+        processingOCR = true
+
+        Task {
+            do {
+                // Call Claude API for document processing
+                let claudeTermekek = try await ClaudeAPIService.shared.processNfVisszakuldesDocument(documentURL: documentURL)
+
+                // Update UI on main thread
+                await MainActor.run {
+                    // Group termekek by bizonylatSzam
+                    var bizonylatGrouped: [String: [NfTermekData]] = [:]
+                    let startingSorrend = Int16(allResults.flatMap { $0 }.flatMap { $0.termekek }.count)
+
+                    for (index, claudeTermek) in claudeTermekek.enumerated() {
+                        let termek = NfTermekData(
+                            cikkszam: claudeTermek.cikkszam,
+                            cikkMegnev: claudeTermek.cikk_megnevezes,
+                            elviKeszlet: Int16(claudeTermek.elvi_keszlet),
+                            sorrend: startingSorrend + Int16(index)
+                        )
+
+                        if bizonylatGrouped[claudeTermek.bizonylat_szam] == nil {
+                            bizonylatGrouped[claudeTermek.bizonylat_szam] = []
+                        }
+                        bizonylatGrouped[claudeTermek.bizonylat_szam]?.append(termek)
+                    }
+
+                    // Convert to NfOCRResult array
+                    let results = bizonylatGrouped.map { (bizonylatSzam, termekek) in
+                        NfOCRResult(bizonylatSzam: bizonylatSzam, termekek: termekek)
+                    }.sorted { $0.bizonylatSzam < $1.bizonylatSzam }
+
+                    // Store results
+                    allResults.append(results)
+
+                    // Extract bizonylat numbers for display
+                    lastPageBizonylatNumbers = results.map { $0.bizonylatSzam }
+
+                    // Mark page as processed
+                    pageProcessed = true
+                    processingOCR = false
+                    selectedDocumentURL = nil
+
+                    // Clean up temporary file
+                    try? FileManager.default.removeItem(at: documentURL)
+                }
+            } catch {
+                // Handle errors on main thread
+                await MainActor.run {
+                    processingOCR = false
+                    selectedDocumentURL = nil
+
+                    // Clean up temporary file
+                    try? FileManager.default.removeItem(at: documentURL)
+
+                    // Show error to user
+                    showErrorAlert(message: error.localizedDescription)
+                }
+            }
+        }
+    }
+
     // MARK: - Error Alert
     private func showErrorAlert(message: String) {
         // Create alert with error message
@@ -295,7 +372,7 @@ struct NfOCRProcessView: View {
     // MARK: - Save to CoreData
     func saveToCoreData() {
         // Merge all results
-        let mergedResults = NfOCRService.mergeOCRResults(allResults, preserveOrder: true)
+        let mergedResults = NfOCRHelper.mergeOCRResults(allResults, preserveOrder: true)
 
         // Create or update bizonyláts and products
         for result in mergedResults {
