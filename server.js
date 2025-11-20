@@ -47,22 +47,44 @@ async function callClaudeWithRetry(messages, maxRetries = 3) {
 
 app.post('/api/process-napi-info', async (req, res) => {
   try {
-    const { image_base64 } = req.body;
+    const { image_base64, document_base64, document_type } = req.body;
 
-    console.log('Processing image...');
-    
+    console.log('Processing document...');
+
+    // Build content array - use document if provided, otherwise use image
+    const contentArray = [];
+
+    if (document_base64 && document_type) {
+      // Process PDF or other document
+      console.log(`Processing ${document_type} document`);
+      contentArray.push({
+        type: "document",
+        source: {
+          type: "base64",
+          media_type: document_type, // e.g., "application/pdf"
+          data: document_base64
+        }
+      });
+    } else if (image_base64) {
+      // Process image (backward compatibility)
+      console.log('Processing image');
+      contentArray.push({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: "image/jpeg",
+          data: image_base64
+        }
+      });
+    } else {
+      throw new Error('No image or document provided');
+    }
+
     const message = await callClaudeWithRetry([
       {
         role: "user",
         content: [
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: "image/jpeg",
-              data: image_base64
-            }
-          },
+          ...contentArray,
           {
             type: "text",
             text: `Te egy MAGYAR Napi Infó dokumentum elemző vagy.
@@ -205,22 +227,44 @@ Tartsd meg a TELJES tartalmat, ne rövidíts!`
 // NEW ENDPOINT: NF visszaküldés OCR processing
 app.post('/api/process-nf-visszakuldes', async (req, res) => {
   try {
-    const { image_base64 } = req.body;
+    const { image_base64, document_base64, document_type } = req.body;
 
-    console.log('Processing NF visszaküldés image...');
-    
+    console.log('Processing NF visszaküldés document...');
+
+    // Build content array - use document if provided, otherwise use image
+    const contentArray = [];
+
+    if (document_base64 && document_type) {
+      // Process PDF or other document
+      console.log(`Processing ${document_type} document`);
+      contentArray.push({
+        type: "document",
+        source: {
+          type: "base64",
+          media_type: document_type,
+          data: document_base64
+        }
+      });
+    } else if (image_base64) {
+      // Process image (backward compatibility)
+      console.log('Processing image');
+      contentArray.push({
+        type: "image",
+        source: {
+          type: "base64",
+          media_type: "image/jpeg",
+          data: image_base64
+        }
+      });
+    } else {
+      throw new Error('No image or document provided');
+    }
+
     const message = await callClaudeWithRetry([
       {
         role: "user",
         content: [
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: "image/jpeg",
-              data: image_base64
-            }
-          },
+          ...contentArray,
           {
             type: "text",
             text: `Te egy MAGYAR NF (Nonfood) visszaküldés dokumentum elemző vagy.

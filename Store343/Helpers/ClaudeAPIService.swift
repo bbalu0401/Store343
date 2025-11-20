@@ -57,7 +57,7 @@ class ClaudeAPIService {
 
     private init() {}
 
-    /// Process Napi Infó document with Claude API
+    /// Process Napi Infó document with Claude API (Image)
     /// - Parameter image: UIImage of the document to process
     /// - Returns: Array of parsed NapiInfoBlock objects
     func processNapiInfo(image: UIImage) async throws -> [NapiInfoBlock] {
@@ -111,7 +111,67 @@ class ClaudeAPIService {
         return blocks
     }
 
-    /// Process NF visszaküldés document with Claude API
+    /// Process Napi Infó document with Claude API (PDF/Document)
+    /// - Parameter documentURL: URL of the PDF/document to process
+    /// - Returns: Array of parsed NapiInfoBlock objects
+    func processNapiInfoDocument(documentURL: URL) async throws -> [NapiInfoBlock] {
+        // 1. Read document data
+        guard let documentData = try? Data(contentsOf: documentURL) else {
+            throw APIError.imageConversionFailed
+        }
+
+        // 2. Determine MIME type
+        let mimeType = getMimeType(for: documentURL)
+
+        // 3. Encode to base64
+        let base64String = documentData.base64EncodedString()
+
+        // 4. Create request
+        guard let url = URL(string: "\(baseURL)/api/process-napi-info") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 120 // Longer timeout for document processing
+
+        let body: [String: Any] = [
+            "document_base64": base64String,
+            "document_type": mimeType
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        // 5. Make request
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        // 6. Validate response
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError(statusCode: httpResponse.statusCode)
+        }
+
+        // 7. Parse JSON response
+        let decoder = JSONDecoder()
+        let apiResponse = try decoder.decode(ClaudeAPIResponse.self, from: data)
+
+        // 8. Check success
+        guard apiResponse.success, let blocks = apiResponse.blocks else {
+            throw APIError.processingFailed(message: apiResponse.error ?? "Ismeretlen hiba történt")
+        }
+
+        // 9. Validate blocks
+        guard !blocks.isEmpty else {
+            throw APIError.noInfoFound
+        }
+
+        return blocks
+    }
+
+    /// Process NF visszaküldés document with Claude API (Image)
     /// - Parameter image: UIImage of the NF document to process
     /// - Returns: Array of parsed NfTermekResponse objects
     func processNfVisszakuldes(image: UIImage) async throws -> [NfTermekResponse] {
@@ -158,6 +218,66 @@ class ClaudeAPIService {
         }
 
         // 8. Validate termekek
+        guard !termekek.isEmpty else {
+            throw APIError.noInfoFound
+        }
+
+        return termekek
+    }
+
+    /// Process NF visszaküldés document with Claude API (PDF/Document)
+    /// - Parameter documentURL: URL of the PDF/document to process
+    /// - Returns: Array of parsed NfTermekResponse objects
+    func processNfVisszakuldesDocument(documentURL: URL) async throws -> [NfTermekResponse] {
+        // 1. Read document data
+        guard let documentData = try? Data(contentsOf: documentURL) else {
+            throw APIError.imageConversionFailed
+        }
+
+        // 2. Determine MIME type
+        let mimeType = getMimeType(for: documentURL)
+
+        // 3. Encode to base64
+        let base64String = documentData.base64EncodedString()
+
+        // 4. Create request
+        guard let url = URL(string: "\(baseURL)/api/process-nf-visszakuldes") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 120 // Longer timeout for document processing
+
+        let body: [String: Any] = [
+            "document_base64": base64String,
+            "document_type": mimeType
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        // 5. Make request
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        // 6. Validate response
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError(statusCode: httpResponse.statusCode)
+        }
+
+        // 7. Parse JSON response
+        let decoder = JSONDecoder()
+        let apiResponse = try decoder.decode(NfClaudeAPIResponse.self, from: data)
+
+        // 8. Check success
+        guard apiResponse.success, let termekek = apiResponse.termekek else {
+            throw APIError.processingFailed(message: apiResponse.error ?? "Ismeretlen hiba történt")
+        }
+
+        // 9. Validate termekek
         guard !termekek.isEmpty else {
             throw APIError.noInfoFound
         }
@@ -237,6 +357,30 @@ class ClaudeAPIService {
         if tema.contains("statisztika") || tema.contains("adat") { return "📊" }
 
         return "📋" // default
+    }
+
+    /// Get MIME type from file URL
+    private func getMimeType(for url: URL) -> String {
+        let pathExtension = url.pathExtension.lowercased()
+
+        switch pathExtension {
+        case "pdf":
+            return "application/pdf"
+        case "xlsx":
+            return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        case "xls":
+            return "application/vnd.ms-excel"
+        case "csv":
+            return "text/csv"
+        case "txt":
+            return "text/plain"
+        case "doc":
+            return "application/msword"
+        case "docx":
+            return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        default:
+            return "application/octet-stream"
+        }
     }
 
     // MARK: - Error Types
