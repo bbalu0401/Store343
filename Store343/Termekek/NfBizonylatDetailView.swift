@@ -116,6 +116,7 @@ struct NfBizonylatDetailView: View {
                 }
             }
         }
+        .frame(maxHeight: .infinity, alignment: .top)
         .background(Color.adaptiveBackground(colorScheme: colorScheme))
         .navigationBarHidden(true)
     }
