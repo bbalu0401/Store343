@@ -109,7 +109,7 @@ struct NfVisszakuldesView: View {
                             .padding(.horizontal)
 
                         ForEach(bizonylatok, id: \.id) { bizonylat in
-                            BizonylatCard(bizonylat: bizonylat) {
+                            NfBizonylatCard(bizonylat: bizonylat) {
                                 selectedBizonylat = bizonylat
                             }
                             .padding(.horizontal)
@@ -323,8 +323,8 @@ struct NfVisszakuldesView: View {
     }
 }
 
-// MARK: - Bizonylat Card
-struct BizonylatCard: View {
+// MARK: - NF Bizonylat Card
+struct NfBizonylatCard: View {
     let bizonylat: NfBizonylat
     let onTap: () -> Void
     @Environment(\.colorScheme) var colorScheme
