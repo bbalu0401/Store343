@@ -19,111 +19,35 @@ struct NfBizonylatDetailView: View {
     }
 
     var body: some View {
-        GeometryReader { geometry in
-            VStack(spacing: 0) {
-                // Navigation Bar
-                HStack {
-                    Button(action: onBack) {
-                        HStack {
-                            Image(systemName: "chevron.left")
-                            Text("Vissza")
-                        }
-                        .foregroundColor(.lidlBlue)
-                    }
-
-                    Spacer()
-
-                    Text("NF visszaküldés")
-                        .font(.headline)
-
-                    Spacer()
-
-                    Color.clear.frame(width: 80)
-                }
-                .padding()
-                .background(Color.adaptiveBackground(colorScheme: colorScheme))
-                .overlay(Divider().background(Color.secondary.opacity(0.3)), alignment: .bottom)
-
-                // Content
-                VStack(spacing: 0) {
-                    // Header
-                    VStack(spacing: 12) {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Bizonylat szám")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-
-                                Text(bizonylat.bizonylatSzam ?? "")
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                            }
-
-                            Spacer()
-                        }
-
-                        HStack(spacing: 20) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Termékek")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-
-                                Text("\(bizonylat.osszesTetel)")
-                                    .font(.title3)
-                                    .fontWeight(.semibold)
-                            }
-
-                            Divider()
-                                .frame(height: 40)
-
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Feldolgozva")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-
-                                let feldolgozott = termekek.filter { $0.osszesen > 0 }.count
-                                Text("\(feldolgozott)/\(termekek.count)")
-                                    .font(.title3)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(feldolgozott == termekek.count ? .green : .orange)
-                            }
-
-                            Divider()
-                                .frame(height: 40)
-
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Összesen")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-
-                                Text("\(osszesTermekMennyiseg) db")
-                                    .font(.title3)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.lidlBlue)
-                            }
-                        }
-                    }
-                    .padding()
-                    .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
-
-                    // Termékek List
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            ForEach(termekek, id: \.id) { termek in
-                                TermekDetailCard(termek: termek, bizonylat: bizonylat)
-                                    .padding(.horizontal)
-                            }
-                            Color.clear.frame(height: 20)
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        VStack(spacing: 0) {
+            // Navigation
+            HStack {
+                Button("Vissza", action: onBack)
+                    .foregroundColor(.blue)
+                Spacer()
+                Text("TEST VIEW")
+                Spacer()
             }
-            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
+            .padding()
+            .background(Color.gray.opacity(0.2))
+
+            // Tartalom
+            ScrollView {
+                VStack {
+                    Text("Bizonylat: \(bizonylat.bizonylatSzam ?? "")")
+                        .font(.title)
+                        .padding()
+
+                    ForEach(termekek, id: \.id) { termek in
+                        Text(termek.cikkszam ?? "")
+                            .padding()
+                    }
+                }
+            }
+
+            Spacer()
         }
-        .background(Color.adaptiveBackground(colorScheme: colorScheme))
-        .edgesIgnoringSafeArea(.bottom)
-        .navigationBarHidden(true)
+        .background(Color.white)
     }
 }
 
