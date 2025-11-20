@@ -102,8 +102,10 @@ struct NfBizonylatDetailView: View {
                     Color.clear.frame(height: 20)
                 }
             }
+
+            Spacer()
         }
-        .background(Color.adaptiveBackground(colorScheme: colorScheme))
+        .background(Color.white)
         .navigationBarHidden(true)
     }
 }
