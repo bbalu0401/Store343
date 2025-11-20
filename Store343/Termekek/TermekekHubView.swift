@@ -30,22 +30,11 @@ struct TermekekSelectionView: View {
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            Text("Termékek")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal)
-                .padding(.top, 8)
-                .padding(.bottom, 4)
-
+        VStack(spacing: 16) {
             Text("Válaszd ki a termékezési feladatot")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal)
-                .padding(.bottom, 16)
+                .padding(.top)
 
             // Elosztások
             TermekekTypeCard(
@@ -82,8 +71,9 @@ struct TermekekSelectionView: View {
 
             Spacer()
         }
-        .padding(.horizontal)
+        .padding()
         .background(Color.adaptiveBackground(colorScheme: colorScheme))
+        .navigationTitle("Termékek")
     }
 }
 
