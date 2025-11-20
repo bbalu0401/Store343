@@ -328,7 +328,7 @@ Important:
         print("🔵 [NF] Calling Claude API...")
         message = client.messages.create(
             model="claude-3-haiku-20240307",
-            max_tokens=8192,
+            max_tokens=4096,
             messages=[
                 {
                     "role": "user",
