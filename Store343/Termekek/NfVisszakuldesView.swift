@@ -230,6 +230,13 @@ struct NfVisszakuldesView: View {
         Button(action: {
             log("🎯 Upload button tapped")
             showDocumentPicker = true
+            // Debug: Force show alert to verify button works
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                if !showDocumentPicker {
+                    errorMessage = "DEBUG: showDocumentPicker nem változott!"
+                    showError = true
+                }
+            }
         }) {
             HStack {
                 Image(systemName: "doc.badge.plus")
