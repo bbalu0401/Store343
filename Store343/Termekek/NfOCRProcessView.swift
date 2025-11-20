@@ -372,7 +372,7 @@ struct NfOCRProcessView: View {
     // MARK: - Save to CoreData
     func saveToCoreData() {
         // Merge all results
-        let mergedResults = NfOCRService.mergeOCRResults(allResults, preserveOrder: true)
+        let mergedResults = NfOCRHelper.mergeOCRResults(allResults, preserveOrder: true)
 
         // Create or update bizonyláts and products
         for result in mergedResults {

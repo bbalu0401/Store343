@@ -454,8 +454,8 @@ struct NapiInfoMainView: View {
                 // Update UI on main thread
                 await MainActor.run {
                     // Convert Claude API blocks to our internal format with Hungarian text corrections
-                    let ocrBlocks = blocks.map { block -> OCRService.NapiInfoBlock in
-                        return OCRService.NapiInfoBlock(
+                    let ocrBlocks = blocks.map { block -> NapiInfoBlock in
+                        return NapiInfoBlock(
                             tema: ClaudeAPIService.correctHungarianText(block.tema),
                             erintett: ClaudeAPIService.correctHungarianText(block.erintett),
                             hatarido: block.hatarido.map { ClaudeAPIService.correctHungarianText($0) },
@@ -505,8 +505,8 @@ struct NapiInfoMainView: View {
                 // Update UI on main thread
                 await MainActor.run {
                     // Convert Claude API blocks to our internal format with Hungarian text corrections
-                    let ocrBlocks = blocks.map { block -> OCRService.NapiInfoBlock in
-                        return OCRService.NapiInfoBlock(
+                    let ocrBlocks = blocks.map { block -> NapiInfoBlock in
+                        return NapiInfoBlock(
                             tema: ClaudeAPIService.correctHungarianText(block.tema),
                             erintett: ClaudeAPIService.correctHungarianText(block.erintett),
                             hatarido: block.hatarido.map { ClaudeAPIService.correctHungarianText($0) },
@@ -584,7 +584,7 @@ struct NapiInfoMainView: View {
     }
 
     // MARK: - Update NapiInfo from Info Block
-    private func updateNapiInfoFromBlock(_ info: NapiInfo, block: OCRService.NapiInfoBlock) {
+    private func updateNapiInfoFromBlock(_ info: NapiInfo, block: NapiInfoBlock) {
         info.feldolgozva = true
         info.tema = block.tema
         info.erintett = block.erintett
@@ -600,7 +600,7 @@ struct NapiInfoMainView: View {
     }
 
     // MARK: - Update NapiInfo from Multiple Blocks
-    private func updateNapiInfoFromMultipleBlocks(_ info: NapiInfo, blocks: [OCRService.NapiInfoBlock]) {
+    private func updateNapiInfoFromMultipleBlocks(_ info: NapiInfo, blocks: [NapiInfoBlock]) {
         info.feldolgozva = true
 
         // Load existing blocks from JSON (if any)
