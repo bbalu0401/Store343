@@ -104,7 +104,6 @@ struct NfBizonylatDetailView: View {
                 }
                 .padding()
                 .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
-                .padding()
 
                 // Termékek List
                 ScrollView {
