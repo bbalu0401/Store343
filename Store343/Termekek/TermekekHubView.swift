@@ -8,20 +8,17 @@ struct TermekekHubView: View {
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        NavigationView {
-            Group {
-                if selectedType == nil {
-                    TermekekSelectionView(selectedType: $selectedType)
-                } else if selectedType == "elosztasok" {
-                    ElosztasokView(selectedType: $selectedType)
-                } else if selectedType == "hianycikkek" {
-                    HianycikkekView(selectedType: $selectedType)
-                } else if selectedType == "nf_visszakuldes" {
-                    NfVisszakuldesView(selectedType: $selectedType)
-                }
+        Group {
+            if selectedType == nil {
+                TermekekSelectionView(selectedType: $selectedType)
+            } else if selectedType == "elosztasok" {
+                ElosztasokView(selectedType: $selectedType)
+            } else if selectedType == "hianycikkek" {
+                HianycikkekView(selectedType: $selectedType)
+            } else if selectedType == "nf_visszakuldes" {
+                NfVisszakuldesView(selectedType: $selectedType)
             }
         }
-        .navigationViewStyle(.stack)
     }
 }
 
@@ -31,11 +28,22 @@ struct TermekekSelectionView: View {
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 0) {
+            // Header
+            Text("Termékek")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+
             Text("Válaszd ki a termékezési feladatot")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
-                .padding(.top)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal)
+                .padding(.bottom, 16)
 
             // Elosztások
             TermekekTypeCard(
@@ -72,9 +80,8 @@ struct TermekekSelectionView: View {
 
             Spacer()
         }
-        .padding()
+        .padding(.horizontal)
         .background(Color.adaptiveBackground(colorScheme: colorScheme))
-        .navigationTitle("Termékek")
     }
 }
 
