@@ -6,8 +6,8 @@ import UIKit
 
 // MARK: - Response Models
 
-// Napi Info Models
-struct NapiInfoBlock: Codable {
+// Napi Info Models - Backend Response Format
+struct ClaudeNapiInfoBlock: Codable {
     let tema: String
     let erintett: String
     let tartalom: String
@@ -19,7 +19,7 @@ struct NapiInfoBlock: Codable {
 
 struct ClaudeAPIResponse: Codable {
     let success: Bool
-    let blocks: [NapiInfoBlock]?
+    let blocks: [ClaudeNapiInfoBlock]?
     let error: String?
     let usage: Usage?
 
@@ -59,8 +59,8 @@ class ClaudeAPIService {
 
     /// Process Napi Infó document with Claude API (Image)
     /// - Parameter image: UIImage of the document to process
-    /// - Returns: Array of parsed NapiInfoBlock objects
-    func processNapiInfo(image: UIImage) async throws -> [NapiInfoBlock] {
+    /// - Returns: Array of parsed ClaudeNapiInfoBlock objects
+    func processNapiInfo(image: UIImage) async throws -> [ClaudeNapiInfoBlock] {
         // 1. Convert image to JPEG with higher quality for better OCR
         guard let imageData = image.jpegData(compressionQuality: 0.95) else {
             throw APIError.imageConversionFailed
@@ -113,8 +113,8 @@ class ClaudeAPIService {
 
     /// Process Napi Infó document with Claude API (PDF/Document)
     /// - Parameter documentURL: URL of the PDF/document to process
-    /// - Returns: Array of parsed NapiInfoBlock objects
-    func processNapiInfoDocument(documentURL: URL) async throws -> [NapiInfoBlock] {
+    /// - Returns: Array of parsed ClaudeNapiInfoBlock objects
+    func processNapiInfoDocument(documentURL: URL) async throws -> [ClaudeNapiInfoBlock] {
         // 1. Read document data
         guard let documentData = try? Data(contentsOf: documentURL) else {
             throw APIError.imageConversionFailed
