@@ -53,7 +53,7 @@ struct NfClaudeAPIResponse: Codable {
 class ClaudeAPIService {
     static let shared = ClaudeAPIService()
 
-    private let baseURL = "https://store343-claude-api-5c681a6660b4.herokuapp.com"
+    private let baseURL = "https://store343-production.up.railway.app"
 
     private init() {}
 
