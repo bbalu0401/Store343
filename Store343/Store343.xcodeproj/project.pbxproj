@@ -35,6 +35,9 @@
 		4A3255CAC0BA4CF18B4EE44D /* QuickActionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3BB88A27F5B4FAB8BF1AEC0 /* QuickActionCard.swift */; };
 		C1DCC5530C9742C98B28E6EA /* WideCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F822521389694F12827F1CB9 /* WideCard.swift */; };
 		5A3756F371604793B6583FED /* WeeklyInfoCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF301BD419CF43D9A8297447 /* WeeklyInfoCard.swift */; };
+		2F9673CE234C466BA1631263 /* DocumentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD8EE23E4DDB4D4A9729A2CB /* DocumentPicker.swift */; };
+		491F8B59258C46F288165E76 /* NapiInfoModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5E8AC18E241454886AB7C68 /* NapiInfoModels.swift */; };
+		E1968FBC54C747188153061A /* NfModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E7C172DE95447029EFCF5A7 /* NfModels.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -67,6 +70,9 @@
 		E3BB88A27F5B4FAB8BF1AEC0 /* QuickActionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionCard.swift; sourceTree = "<group>"; };
 		F822521389694F12827F1CB9 /* WideCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WideCard.swift; sourceTree = "<group>"; };
 		DF301BD419CF43D9A8297447 /* WeeklyInfoCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyInfoCard.swift; sourceTree = "<group>"; };
+		CD8EE23E4DDB4D4A9729A2CB /* DocumentPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPicker.swift; sourceTree = "<group>"; };
+		D5E8AC18E241454886AB7C68 /* NapiInfoModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NapiInfoModels.swift; sourceTree = "<group>"; };
+		3E7C172DE95447029EFCF5A7 /* NfModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NfModels.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -107,6 +113,8 @@
 			children = (
 				BA333A052EBFCB3D0012B6AA /* PersistenceController.swift */,
 				BA3339FD2EBFCA710012B6AA /* ColorTheme.swift */,
+				D5E8AC18E241454886AB7C68 /* NapiInfoModels.swift */,
+				3E7C172DE95447029EFCF5A7 /* NfModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -192,6 +200,7 @@
 			children = (
 				BA333A2D2EBFD0030012B6AA /* ImagePicker.swift */,
 				536A6DBCF93643FB844C7C0D /* ClaudeAPIService.swift */,
+				CD8EE23E4DDB4D4A9729A2CB /* DocumentPicker.swift */,
 			);
 			path = Helpers;
 			sourceTree = "<group>";
@@ -298,6 +307,9 @@
 				BA333A3B2EBFD02A0012B6AA /* NfBizonylatListView.swift in Sources */,
 				BA333A3D2EBFD02C0012B6AA /* NfTermekListView.swift in Sources */,
 				BA333A3F2EBFD02E0012B6AA /* NfOCRProcessView.swift in Sources */,
+				2F9673CE234C466BA1631263 /* DocumentPicker.swift in Sources */,
+				491F8B59258C46F288165E76 /* NapiInfoModels.swift in Sources */,
+				E1968FBC54C747188153061A /* NfModels.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
