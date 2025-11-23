@@ -52,44 +52,18 @@ struct DocumentPicker: UIViewControllerRepresentable {
 
             print("📎 Selected file: \(url.lastPathComponent)")
 
-            // Start accessing security-scoped resource
-            guard url.startAccessingSecurityScopedResource() else {
-                print("❌ Failed to access security-scoped resource")
-                DispatchQueue.main.async {
-                    self.parent.presentationMode.wrappedValue.dismiss()
-                }
-                return
-            }
+            // Note: asCopy: true means file is already copied by iOS
+            // No need for startAccessingSecurityScopedResource()
 
-            defer {
-                url.stopAccessingSecurityScopedResource()
-            }
+            // Use the URL directly (already points to a copy)
+            print("✅ File already copied by iOS to: \(url.path)")
 
-            // Copy file to temporary directory
-            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(url.lastPathComponent)
-
-            do {
-                // Remove existing file if it exists
-                if FileManager.default.fileExists(atPath: tempURL.path) {
-                    try FileManager.default.removeItem(at: tempURL)
-                }
-
-                // Copy file
-                try FileManager.default.copyItem(at: url, to: tempURL)
-                print("✅ File copied to temp: \(tempURL.path)")
-
-                // Set binding on main thread (parent will handle dismiss)
-                DispatchQueue.main.async {
-                    print("🔄 Setting selectedDocumentURL to: \(tempURL.lastPathComponent)")
-                    self.parent.selectedDocumentURL = tempURL
-                    print("✅ selectedDocumentURL set successfully")
-                    print("✅ Parent view will handle sheet dismiss")
-                }
-            } catch {
-                print("❌ Error copying document: \(error)")
-                DispatchQueue.main.async {
-                    self.parent.presentationMode.wrappedValue.dismiss()
-                }
+            // Set binding on main thread (parent will handle dismiss)
+            DispatchQueue.main.async {
+                print("🔄 Setting selectedDocumentURL to: \(url.lastPathComponent)")
+                self.parent.selectedDocumentURL = url
+                print("✅ selectedDocumentURL set successfully")
+                print("✅ Parent view will handle sheet dismiss")
             }
         }
 
