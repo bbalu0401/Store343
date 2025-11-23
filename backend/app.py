@@ -9,9 +9,11 @@ import anthropic
 import os
 import base64
 import json
+import traceback
 from typing import List, Dict, Any
 from openpyxl import load_workbook
 from io import BytesIO
+import fitz  # PyMuPDF
 
 app = Flask(__name__)
 CORS(app)
@@ -125,6 +127,41 @@ def process_napi_info():
         # Accept both 'image_type' and 'document_type'
         image_type = data.get('image_type') or data.get('document_type', 'image/jpeg')
         print(f"📄 [NAPI] Document type: {image_type}, base64 length: {len(image_base64)}")
+
+        # Convert PDF to PNG if needed (Claude API only accepts image formats)
+        if image_type == 'application/pdf':
+            print("📄 [NAPI] Converting PDF to PNG...")
+            try:
+                # Decode base64 PDF
+                pdf_bytes = base64.b64decode(image_base64)
+
+                # Open PDF with PyMuPDF
+                pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
+                print(f"📄 [NAPI] PDF has {len(pdf_document)} pages")
+
+                # Convert first page to PNG (we can extend this later for multi-page)
+                page = pdf_document[0]
+
+                # Render page to pixmap (image) at 2x resolution for better quality
+                mat = fitz.Matrix(2.0, 2.0)  # 2x zoom for better OCR
+                pix = page.get_pixmap(matrix=mat)
+
+                # Convert pixmap to PNG bytes
+                png_bytes = pix.tobytes("png")
+                pdf_document.close()
+
+                # Encode back to base64
+                image_base64 = base64.b64encode(png_bytes).decode('utf-8')
+                image_type = 'image/png'
+
+                print(f"📄 [NAPI] PDF converted to PNG, new base64 length: {len(image_base64)}")
+            except Exception as e:
+                print(f"❌ [NAPI] PDF conversion error: {str(e)}")
+                traceback.print_exc()
+                return jsonify({
+                    "success": False,
+                    "error": f"Failed to convert PDF: {str(e)}"
+                }), 500
 
         # Prepare messages for Claude
         prompt = """Analyze this Hungarian LIDL Napi Információ PDF document. Extract ALL topics/sections.
