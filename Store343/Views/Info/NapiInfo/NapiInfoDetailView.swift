@@ -37,6 +37,7 @@ struct NapiInfoDetailView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @State private var showDeleteAlert = false
     @State private var expandedBlockIndex: Int? = nil
+    @State private var blocksCache: [[String: Any]]? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -65,7 +66,7 @@ struct NapiInfoDetailView: View {
                     dateHeaderView
 
                     // MARK: - Statistics Cards
-                    if let blocks = parseInfoBlocks() {
+                    if let blocks = getBlocks() {
                         statisticsView(blocks: blocks)
                             .padding(.horizontal, 16)
                             .padding(.bottom, 20)
@@ -98,6 +99,12 @@ struct NapiInfoDetailView: View {
             }
         }
         .background(Color.adaptiveBackground(colorScheme: colorScheme))
+        .onAppear {
+            // Initialize cache on appear
+            if blocksCache == nil {
+                blocksCache = parseInfoBlocks()
+            }
+        }
         .alert("Dokumentum törlése", isPresented: $showDeleteAlert) {
             Button("Mégse", role: .cancel) {}
             Button("Törlés", role: .destructive) {
@@ -118,7 +125,7 @@ struct NapiInfoDetailView: View {
             }
 
             // Progress bar
-            if let blocks = parseInfoBlocks() {
+            if let blocks = getBlocks() {
                 let completed = blocks.filter { ($0["completed"] as? Bool) == true }.count
                 let total = blocks.count
                 let percentage = total > 0 ? Int((Double(completed) / Double(total)) * 100) : 0
@@ -184,6 +191,11 @@ struct NapiInfoDetailView: View {
 
     // MARK: - Helper Functions
 
+    func getBlocks() -> [[String: Any]]? {
+        // Return cached blocks if available for instant UI updates
+        return blocksCache
+    }
+
     func parseInfoBlocks() -> [[String: Any]]? {
         guard let termekListaJSON = info.termekLista,
               let termekData = termekListaJSON.data(using: .utf8),
@@ -228,23 +240,30 @@ struct NapiInfoDetailView: View {
     }
 
     func toggleCompleted(at index: Int) {
-        // Parse existing blocks
-        guard let termekListaJSON = info.termekLista,
-              let termekData = termekListaJSON.data(using: .utf8),
-              var blocks = try? JSONSerialization.jsonObject(with: termekData) as? [[String: Any]],
-              index < blocks.count else {
+        // Update cache immediately for instant UI feedback
+        guard var blocks = blocksCache, index < blocks.count else {
             return
         }
 
-        // Toggle completed status
         let currentStatus = blocks[index]["completed"] as? Bool ?? false
         blocks[index]["completed"] = !currentStatus
+        blocksCache = blocks
 
-        // Save back to JSON
-        if let jsonData = try? JSONSerialization.data(withJSONObject: blocks),
-           let jsonString = String(data: jsonData, encoding: .utf8) {
-            info.termekLista = jsonString
-            try? viewContext.save()
+        // Haptic feedback for better UX
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+
+        // Save to database asynchronously (non-blocking)
+        Task {
+            guard let jsonData = try? JSONSerialization.data(withJSONObject: blocks),
+                  let jsonString = String(data: jsonData, encoding: .utf8) else {
+                return
+            }
+
+            await MainActor.run {
+                info.termekLista = jsonString
+                try? viewContext.save()
+            }
         }
     }
 }
