@@ -143,7 +143,7 @@ Important:
 
         message = client.messages.create(
             model="claude-3-haiku-20240307",
-            max_tokens=4096,
+            max_tokens=8192,  # Increased from 4096 for large multi-topic documents
             messages=[
                 {
                     "role": "user",
@@ -328,7 +328,7 @@ Important:
         print("🔵 [NF] Calling Claude API...")
         message = client.messages.create(
             model="claude-3-haiku-20240307",
-            max_tokens=4096,
+            max_tokens=16384,  # Increased from 4096 to handle large product lists (100+ items)
             messages=[
                 {
                     "role": "user",
@@ -368,7 +368,7 @@ Important:
                 print(f"🔵 [NF] Extracted JSON starting at position {bracket_index}")
 
         # Check if response was truncated (hit max_tokens limit)
-        if message.usage.output_tokens >= 4090:  # Close to max_tokens
+        if message.usage.output_tokens >= 16300:  # Close to max_tokens (16384)
             print("⚠️ [NF] Response may be truncated (hit max_tokens limit)")
 
         # Try to fix incomplete JSON if response was truncated
