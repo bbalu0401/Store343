@@ -129,6 +129,7 @@ def process_napi_info():
         print(f"📄 [NAPI] Document type: {image_type}, base64 length: {len(image_base64)}")
 
         # Convert PDF to PNG if needed (Claude API only accepts image formats)
+        pdf_pages = []  # Will store base64 PNG images for each page
         if image_type == 'application/pdf':
             print("📄 [NAPI] Converting PDF to PNG...")
             try:
@@ -139,22 +140,26 @@ def process_napi_info():
                 pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
                 print(f"📄 [NAPI] PDF has {len(pdf_document)} pages")
 
-                # Convert first page to PNG (we can extend this later for multi-page)
-                page = pdf_document[0]
+                # Convert ALL pages to PNG
+                for page_num in range(len(pdf_document)):
+                    page = pdf_document[page_num]
 
-                # Render page to pixmap (image) at 2x resolution for better quality
-                mat = fitz.Matrix(2.0, 2.0)  # 2x zoom for better OCR
-                pix = page.get_pixmap(matrix=mat)
+                    # Render page to pixmap (image) at 2x resolution for better quality
+                    mat = fitz.Matrix(2.0, 2.0)  # 2x zoom for better OCR
+                    pix = page.get_pixmap(matrix=mat)
 
-                # Convert pixmap to PNG bytes
-                png_bytes = pix.tobytes("png")
+                    # Convert pixmap to PNG bytes
+                    png_bytes = pix.tobytes("png")
+
+                    # Encode to base64 and store
+                    page_base64 = base64.b64encode(png_bytes).decode('utf-8')
+                    pdf_pages.append(page_base64)
+
+                    print(f"📄 [NAPI] Page {page_num + 1} converted to PNG, base64 length: {len(page_base64)}")
+
                 pdf_document.close()
-
-                # Encode back to base64
-                image_base64 = base64.b64encode(png_bytes).decode('utf-8')
                 image_type = 'image/png'
-
-                print(f"📄 [NAPI] PDF converted to PNG, new base64 length: {len(image_base64)}")
+                print(f"📄 [NAPI] All {len(pdf_pages)} pages converted to PNG")
             except Exception as e:
                 print(f"❌ [NAPI] PDF conversion error: {str(e)}")
                 traceback.print_exc()
@@ -162,6 +167,9 @@ def process_napi_info():
                     "success": False,
                     "error": f"Failed to convert PDF: {str(e)}"
                 }), 500
+        else:
+            # For regular images, just use the single image
+            pdf_pages = [image_base64]
 
         # Prepare messages for Claude
         prompt = """Analyze this Hungarian LIDL Napi Információ PDF document. Extract ALL topics/sections.
@@ -222,27 +230,33 @@ Return ONLY valid JSON array, no markdown, no explanation:
 
 CRITICAL: Extract ALL topics from ALL pages of the PDF!"""
 
-        print("📄 [NAPI] Calling Claude API...")
+        # Build content array with all pages
+        content_items = []
+        for page_num, page_base64 in enumerate(pdf_pages):
+            print(f"📄 [NAPI] Adding page {page_num + 1} to Claude API request")
+            content_items.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": image_type,
+                    "data": page_base64,
+                },
+            })
+
+        # Add prompt at the end
+        content_items.append({
+            "type": "text",
+            "text": prompt
+        })
+
+        print(f"📄 [NAPI] Calling Claude API with {len(pdf_pages)} page(s)...")
         message = client.messages.create(
             model="claude-sonnet-4-5-20250929",
             max_tokens=16384,  # Claude Sonnet 4.5 supports up to 64K output tokens
             messages=[
                 {
                     "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": image_type,
-                                "data": image_base64,
-                            },
-                        },
-                        {
-                            "type": "text",
-                            "text": prompt
-                        }
-                    ],
+                    "content": content_items,
                 }
             ],
         )
