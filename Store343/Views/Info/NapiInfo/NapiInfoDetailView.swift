@@ -39,15 +39,30 @@ struct NapiInfoDetailView: View {
     @State private var expandedBlockIndex: Int? = nil
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            // Background - Adaptive (black in dark, white in light)
-            (colorScheme == .dark ? Color.black : Color.white)
-                .ignoresSafeArea()
+        VStack(spacing: 0) {
+            // Navigation bar (ugyanaz mint NF visszaküldésnél)
+            HStack {
+                Button(action: onBack) {
+                    HStack {
+                        Image(systemName: "chevron.left")
+                        Text("Vissza")
+                    }
+                    .foregroundColor(.lidlBlue)
+                }
+                Spacer()
+                Text("Napi Információ")
+                    .font(.headline)
+                Spacer()
+            }
+            .padding()
+            .background(Color.adaptiveBackground(colorScheme: colorScheme))
+            .overlay(Divider().background(Color.secondary.opacity(0.3)), alignment: .bottom)
 
+            // Content ScrollView
             ScrollView {
                 VStack(spacing: 0) {
-                    // MARK: - Header
-                    headerView
+                    // MARK: - Date Header
+                    dateHeaderView
 
                     // MARK: - Statistics Cards
                     if let blocks = parseInfoBlocks() {
@@ -82,6 +97,7 @@ struct NapiInfoDetailView: View {
                 }
             }
         }
+        .background(Color.adaptiveBackground(colorScheme: colorScheme))
         .alert("Dokumentum törlése", isPresented: $showDeleteAlert) {
             Button("Mégse", role: .cancel) {}
             Button("Törlés", role: .destructive) {
@@ -92,66 +108,47 @@ struct NapiInfoDetailView: View {
         }
     }
 
-    // MARK: - Header View
-    private var headerView: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            // Back button
-            Button(action: onBack) {
-                HStack(spacing: 6) {
-                    Image(systemName: "chevron.left")
-                        .font(.body.weight(.semibold))
-                    Text("Vissza")
-                        .font(.body)
-                }
-                .foregroundColor(Color(hex: "#3B82F6"))
+    // MARK: - Date Header View
+    private var dateHeaderView: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if let datum = info.datum {
+                Text(formatDate(datum))
+                    .font(.system(size: 14))
+                    .foregroundColor(Color(hex: "#94A3B8"))
             }
-            .padding(.leading, 16)
-            .padding(.top, 8)
 
-            // Title and date
-            VStack(alignment: .leading, spacing: 2) {
-                Text(info.fajlnev ?? "napi_info")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
+            // Progress bar
+            if let blocks = parseInfoBlocks() {
+                let completed = blocks.filter { ($0["completed"] as? Bool) == true }.count
+                let total = blocks.count
+                let percentage = total > 0 ? Int((Double(completed) / Double(total)) * 100) : 0
 
-                if let datum = info.datum {
-                    Text(formatDate(datum))
-                        .font(.system(size: 14))
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("\(completed)/\(total) (\(percentage)%)")
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(hex: "#94A3B8"))
-                }
 
-                // Progress bar
-                if let blocks = parseInfoBlocks() {
-                    let completed = blocks.filter { ($0["completed"] as? Bool) == true }.count
-                    let total = blocks.count
-                    let percentage = total > 0 ? Int((Double(completed) / Double(total)) * 100) : 0
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            // Background track
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color(hex: "#334155").opacity(0.3))
+                                .frame(height: 6)
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("\(completed)/\(total) (\(percentage)%)")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(Color(hex: "#94A3B8"))
-
-                        GeometryReader { geometry in
-                            ZStack(alignment: .leading) {
-                                // Background track
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(Color(hex: "#334155").opacity(0.3))
-                                    .frame(height: 6)
-
-                                // Progress fill
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(Color.green)
-                                    .frame(width: geometry.size.width * CGFloat(percentage) / 100.0, height: 6)
-                            }
+                            // Progress fill
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.green)
+                                .frame(width: geometry.size.width * CGFloat(percentage) / 100.0, height: 6)
                         }
-                        .frame(height: 6)
                     }
-                    .padding(.top, 8)
+                    .frame(height: 6)
                 }
+                .padding(.top, 8)
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 16)
         }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 16)
     }
 
     // MARK: - Statistics View
@@ -160,7 +157,7 @@ struct NapiInfoDetailView: View {
         let deadline = blocks.filter { getPriority(for: $0) == .deadline }.count
 
         return HStack(spacing: 12) {
-            StatCard(title: "Témák", value: "\(blocks.count)", color: .white)
+            StatCard(title: "Témák", value: "\(blocks.count)", color: .lidlBlue)
             StatCard(title: "Sürgős", value: "\(urgent)", color: Color(hex: "#EF4444"))
             StatCard(title: "Határidős", value: "\(deadline)", color: Color(hex: "#F97316"))
         }
