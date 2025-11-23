@@ -111,35 +111,75 @@ def process_napi_info():
     try:
         data = request.get_json()
 
-        if not data or 'image_base64' not in data:
+        # Accept both 'image_base64' (images) and 'document_base64' (PDFs)
+        image_base64 = data.get('image_base64') or data.get('document_base64')
+        if not image_base64:
             return jsonify({
                 "success": False,
-                "error": "Missing image_base64 in request"
+                "error": "Missing image_base64 or document_base64 in request"
             }), 400
 
-        image_base64 = data['image_base64']
-        image_type = data.get('image_type', 'image/jpeg')
+        # Accept both 'image_type' and 'document_type'
+        image_type = data.get('image_type') or data.get('document_type', 'image/jpeg')
 
         # Prepare messages for Claude
-        prompt = """Analyze this Hungarian LIDL daily info document. Extract structured information.
+        prompt = """Analyze this Hungarian LIDL Napi Információ PDF document. Extract ALL topics/sections.
 
-For each distinct topic/section, create a block with:
-1. **tema**: The main topic (e.g., "Árufeltöltés", "Takarítás")
-2. **erintett**: Affected area/department
-3. **tartalom**: Detailed content/description
-4. **hatarido**: Deadline if mentioned (format: "YYYY-MM-DD HH:MM" or null)
-5. **emoji**: One relevant emoji that represents the topic
-6. **checkboxes**: List of actionable tasks/checkboxes
-7. **images**: Always empty array []
+DOCUMENT STRUCTURE:
+- Header: "Napi Információ" + date (e.g., "2025. november 20., csütörtök")
+- Multiple topics, each with:
+  ☑ Checkboxes at top (Info, Feladat, Mindenki, Jelentés, Melléklet)
+  Téma: [topic title]
+  Érintett: [affected people/department]
+  [Content - can include text, tables, product lists]
+  Határidő: [deadline or missing]
 
-Return ONLY valid JSON array of blocks, nothing else:
+FOR EACH TOPIC, EXTRACT:
+{
+  "tema": "exact topic title from 'Téma:' line",
+  "erintett": "exact text from 'Érintett:' line",
+  "tartalom": "full content - preserve lists with bullet points (•), tables with structure",
+  "hatarido": "YYYY-MM-DD HH:MM or null",
+  "emoji": "relevant emoji (🛒📦💰🍺📊🗂️📋📝🧾)",
+  "checkboxes": ["Info", "Feladat", "Mindenki", "Jelentés", "Melléklet"],
+  "images": []
+}
+
+CHECKPOINT EXTRACTION RULES:
+- Look for ☑ checkmarks at the START of each topic
+- Common patterns: "☑ Info ☑ Feladat", "☐ Info ☑ Feladat ☑ Mindenki"
+- Only include checkboxes that have ☑ (checked) mark
+- Empty checkbox ☐ = not included
+
+DEADLINE NORMALIZATION:
+- "ma este zárás" → today at 21:00
+- "hétfő este zárás volt!" → last Monday at 21:00
+- "2025.11.20. (nyitás)" → "2025-11-20 06:00"
+- "2025.11.22. (szombat)" → "2025-11-22 00:00"
+- "vásárnapig" → next Sunday at 00:00
+- If no deadline mentioned → null
+
+CONTENT FORMATTING:
+- Product lists: preserve with bullets "• 4893 Házánk Kincsei Téli szalámi..."
+- Tables: format clearly with line breaks between rows
+- Bizonylat numbers: keep highlighted "86888 visszaküldési bizonylatszámon"
+- Preserve ALL Hungarian text exactly as written
+
+EMOJI SELECTION:
+- "Mopro akciós sarok" → 🛒
+- "visszaküldés" or "szortiment" → 📦
+- "Lidl Plus" or "termékek" or "árak" → 💰
+- "sör" → 🍺
+- "forgalás" → 📊
+- "készletjelentés" or "MOHU" → 🗂️
+- "munkaterv" or "BV" → 📋
+- "bejárás" or "jegyzőkönyv" → 📝
+- "készletszámolás" → 🧾
+
+Return ONLY valid JSON array, no markdown, no explanation:
 [{"tema": "...", "erintett": "...", "tartalom": "...", "hatarido": "...", "emoji": "...", "checkboxes": [...], "images": []}]
 
-Important:
-- Use Hungarian text exactly as written
-- Extract ALL sections/topics
-- If no deadline, use null
-- Each block is a separate topic"""
+CRITICAL: Extract ALL topics from ALL pages of the PDF!"""
 
         message = client.messages.create(
             model="claude-sonnet-4-5-20250929",
