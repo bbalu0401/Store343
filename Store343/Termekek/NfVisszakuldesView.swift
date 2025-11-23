@@ -48,6 +48,11 @@ struct NfVisszakuldesView: View {
 
     /// Get date range string for selected week
     private func getWeekDateRange() -> String {
+        // Prevent crash if week not set yet
+        guard selectedWeek > 0 && selectedWeek <= 52 else {
+            return ""
+        }
+
         var calendar = Calendar.current
         calendar.firstWeekday = 2 // Monday
         calendar.minimumDaysInFirstWeek = 4 // ISO 8601
@@ -64,14 +69,23 @@ struct NfVisszakuldesView: View {
         var searchDate = calendar.date(from: DateComponents(year: currentYear, month: 1, day: 4))! // First Thursday
         var foundWeek = calendar.component(.weekOfYear, from: searchDate)
 
+        // Safety counter to prevent infinite loop
+        var iterations = 0
+        let maxIterations = 60
+
         // Navigate to the target week
-        while foundWeek < selectedWeek {
+        while foundWeek < selectedWeek && iterations < maxIterations {
             searchDate = calendar.date(byAdding: .weekOfYear, value: 1, to: searchDate)!
             foundWeek = calendar.component(.weekOfYear, from: searchDate)
+            iterations += 1
         }
-        while foundWeek > selectedWeek {
+
+        iterations = 0 // Reset for second loop
+
+        while foundWeek > selectedWeek && iterations < maxIterations {
             searchDate = calendar.date(byAdding: .weekOfYear, value: -1, to: searchDate)!
             foundWeek = calendar.component(.weekOfYear, from: searchDate)
+            iterations += 1
         }
 
         // Get the week interval
@@ -482,19 +496,36 @@ struct NfVisszakuldesView: View {
         calendar.firstWeekday = 2 // Monday
         calendar.minimumDaysInFirstWeek = 4 // ISO 8601
 
+        // Validate week number
+        guard weekNumber > 0 && weekNumber <= 53 else {
+            // Invalid week number, use current date as fallback
+            newHet.kezdoDatum = Date()
+            newHet.vegDatum = Date()
+            return newHet
+        }
+
         // Find a date in the target week
         // Start from first Thursday of the year (guaranteed to be in week 1)
         var searchDate = calendar.date(from: DateComponents(year: Int(year), month: 1, day: 4))! // First Thursday
         var foundWeek = calendar.component(.weekOfYear, from: searchDate)
 
+        // Safety counter to prevent infinite loop
+        var iterations = 0
+        let maxIterations = 60
+
         // Navigate to the target week
-        while foundWeek < weekNumber {
+        while foundWeek < weekNumber && iterations < maxIterations {
             searchDate = calendar.date(byAdding: .weekOfYear, value: 1, to: searchDate)!
             foundWeek = calendar.component(.weekOfYear, from: searchDate)
+            iterations += 1
         }
-        while foundWeek > weekNumber {
+
+        iterations = 0 // Reset for second loop
+
+        while foundWeek > weekNumber && iterations < maxIterations {
             searchDate = calendar.date(byAdding: .weekOfYear, value: -1, to: searchDate)!
             foundWeek = calendar.component(.weekOfYear, from: searchDate)
+            iterations += 1
         }
 
         // Get the week interval (Monday to Sunday)
