@@ -354,7 +354,11 @@ struct NfVisszakuldesView: View {
                         onSave: {
                             // Clear search and jump back to search field
                             searchText = ""
-                            isSearchFocused = true
+
+                            // Small delay to ensure view updates before refocusing
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                isSearchFocused = true
+                            }
                         }
                     )
                     .padding(.horizontal)
@@ -610,26 +614,35 @@ struct TermekSearchCard: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
 
-                    FlowLayout(spacing: 8) {
-                        ForEach(Array(talalasokArray.enumerated()), id: \.offset) { index, mennyiseg in
-                            HStack(spacing: 4) {
-                                Text("\(mennyiseg) db")
-                                    .font(.subheadline)
-                                    .foregroundColor(.primary)
+                    // Show each quantity entry with delete button
+                    ForEach(Array(talalasokArray.enumerated()), id: \.offset) { index, mennyiseg in
+                        HStack(spacing: 8) {
+                            Text("\(mennyiseg) db")
+                                .font(.subheadline)
+                                .foregroundColor(.primary)
 
-                                Button(action: {
-                                    deleteTalalas(at: index)
-                                }) {
-                                    Image(systemName: "xmark.circle.fill")
+                            Spacer()
+
+                            Button(action: {
+                                deleteTalalas(at: index)
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "trash")
                                         .font(.caption)
-                                        .foregroundColor(.red)
+                                    Text("Törlés")
+                                        .font(.caption)
                                 }
+                                .foregroundColor(.red)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.red.opacity(0.1))
+                                .cornerRadius(6)
                             }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.adaptiveCardBackground(colorScheme: colorScheme).opacity(0.5))
-                            .cornerRadius(6)
                         }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.adaptiveCardBackground(colorScheme: colorScheme).opacity(0.5))
+                        .cornerRadius(8)
                     }
                 }
             }
@@ -726,51 +739,6 @@ struct TermekSearchCard: View {
             try viewContext.save()
         } catch {
             print("Error deleting talalas: \(error)")
-        }
-    }
-}
-
-// MARK: - Flow Layout for wrapping items
-struct FlowLayout: Layout {
-    var spacing: CGFloat = 8
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let result = FlowResult(in: proposal.replacingUnspecifiedDimensions().width, subviews: subviews, spacing: spacing)
-        return result.size
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let result = FlowResult(in: bounds.width, subviews: subviews, spacing: spacing)
-        for (index, subview) in subviews.enumerated() {
-            subview.place(at: CGPoint(x: bounds.minX + result.positions[index].x, y: bounds.minY + result.positions[index].y), proposal: .unspecified)
-        }
-    }
-
-    struct FlowResult {
-        var size: CGSize = .zero
-        var positions: [CGPoint] = []
-
-        init(in width: CGFloat, subviews: Subviews, spacing: CGFloat) {
-            var x: CGFloat = 0
-            var y: CGFloat = 0
-            var rowHeight: CGFloat = 0
-
-            for subview in subviews {
-                let size = subview.sizeThatFits(.unspecified)
-
-                if x + size.width > width && x > 0 {
-                    // New row
-                    x = 0
-                    y += rowHeight + spacing
-                    rowHeight = 0
-                }
-
-                positions.append(CGPoint(x: x, y: y))
-                x += size.width + spacing
-                rowHeight = max(rowHeight, size.height)
-            }
-
-            self.size = CGSize(width: width, height: y + rowHeight)
         }
     }
 }
