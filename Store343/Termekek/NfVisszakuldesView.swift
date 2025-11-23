@@ -32,7 +32,11 @@ struct NfVisszakuldesView: View {
 
     /// Get current NfHet for selected week, or nil if doesn't exist yet
     private var currentHet: NfHet? {
-        let currentYear = Calendar.current.component(.year, from: Date())
+        var calendar = Calendar.current
+        calendar.firstWeekday = 2 // Monday
+        calendar.minimumDaysInFirstWeek = 4 // ISO 8601
+
+        let currentYear = calendar.component(.year, from: Date())
         return hetek.first { $0.hetSzam == selectedWeek && $0.ev == currentYear }
     }
 
@@ -46,10 +50,32 @@ struct NfVisszakuldesView: View {
     private func getWeekDateRange() -> String {
         var calendar = Calendar.current
         calendar.firstWeekday = 2 // Monday
+        calendar.minimumDaysInFirstWeek = 4 // ISO 8601
 
         let currentYear = Calendar.current.component(.year, from: Date())
-        guard let startOfYear = calendar.date(from: DateComponents(year: currentYear, month: 1, day: 1)),
-              let weekStart = calendar.date(byAdding: .weekOfYear, value: selectedWeek - 1, to: startOfYear) else {
+
+        // Find a date that is definitely in the selected week of the current year
+        // Start from middle of the year and search
+        guard let midYear = calendar.date(from: DateComponents(year: currentYear, month: 7, day: 1)) else {
+            return ""
+        }
+
+        // Search for the correct week
+        var searchDate = calendar.date(from: DateComponents(year: currentYear, month: 1, day: 4))! // First Thursday
+        var foundWeek = calendar.component(.weekOfYear, from: searchDate)
+
+        // Navigate to the target week
+        while foundWeek < selectedWeek {
+            searchDate = calendar.date(byAdding: .weekOfYear, value: 1, to: searchDate)!
+            foundWeek = calendar.component(.weekOfYear, from: searchDate)
+        }
+        while foundWeek > selectedWeek {
+            searchDate = calendar.date(byAdding: .weekOfYear, value: -1, to: searchDate)!
+            foundWeek = calendar.component(.weekOfYear, from: searchDate)
+        }
+
+        // Get the week interval
+        guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: searchDate) else {
             return ""
         }
 
@@ -57,8 +83,7 @@ struct NfVisszakuldesView: View {
         formatter.locale = Locale(identifier: "hu_HU")
         formatter.dateFormat = "MM.dd"
 
-        let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart)!
-        return "\(formatter.string(from: weekStart))-\(formatter.string(from: weekEnd))"
+        return "\(formatter.string(from: weekInterval.start))-\(formatter.string(from: weekInterval.end.addingTimeInterval(-1)))"
     }
 
     var body: some View {
@@ -150,10 +175,11 @@ struct NfVisszakuldesView: View {
             }
         }
         .onAppear {
-            // Set to current week on first appear
+            // Set to current week on first appear using ISO 8601
             if selectedWeek == 0 {
                 var calendar = Calendar.current
                 calendar.firstWeekday = 2 // Monday
+                calendar.minimumDaysInFirstWeek = 4 // ISO 8601
                 selectedWeek = calendar.component(.weekOfYear, from: Date())
             }
         }
@@ -447,16 +473,36 @@ struct NfVisszakuldesView: View {
         newHet.ev = year
         newHet.befejezve = false
 
-        // Calculate start and end dates for this week
+        // Calculate start and end dates for this week using ISO 8601
         var calendar = Calendar.current
         calendar.firstWeekday = 2 // Monday
+        calendar.minimumDaysInFirstWeek = 4 // ISO 8601
 
-        let startOfYear = calendar.date(from: DateComponents(year: Int(year), month: 1, day: 1))!
-        let weekStart = calendar.date(byAdding: .weekOfYear, value: Int(weekNumber) - 1, to: startOfYear)!
-        let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart)!
+        // Find a date in the target week
+        // Start from first Thursday of the year (guaranteed to be in week 1)
+        var searchDate = calendar.date(from: DateComponents(year: Int(year), month: 1, day: 4))! // First Thursday
+        var foundWeek = calendar.component(.weekOfYear, from: searchDate)
 
-        newHet.kezdoDatum = weekStart
-        newHet.vegDatum = weekEnd
+        // Navigate to the target week
+        while foundWeek < weekNumber {
+            searchDate = calendar.date(byAdding: .weekOfYear, value: 1, to: searchDate)!
+            foundWeek = calendar.component(.weekOfYear, from: searchDate)
+        }
+        while foundWeek > weekNumber {
+            searchDate = calendar.date(byAdding: .weekOfYear, value: -1, to: searchDate)!
+            foundWeek = calendar.component(.weekOfYear, from: searchDate)
+        }
+
+        // Get the week interval (Monday to Sunday)
+        guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: searchDate) else {
+            // Fallback
+            newHet.kezdoDatum = Date()
+            newHet.vegDatum = Date()
+            return newHet
+        }
+
+        newHet.kezdoDatum = weekInterval.start
+        newHet.vegDatum = weekInterval.end.addingTimeInterval(-1) // End is exclusive, so subtract 1 second
 
         return newHet
     }
