@@ -24,39 +24,39 @@ struct HomeView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                LazyVGrid(columns: columns, spacing: 12) {
-                    // 1. Greeting Card (2 columns wide)
+                VStack(spacing: 12) {
+                    // 1. Greeting Card (full width)
                     GreetingCard()
-                        .gridCellColumns(2)
 
-                    // 2. Quick Action cards - Daily (left) and Urgent (right)
-                    QuickActionCard(
-                        title: "Napi",
-                        subtitle: "Új információk",
-                        emoji: "🟡",
-                        count: dailyCount,
-                        gradient: [Color(hex: "#f59e0b"), Color(hex: "#fbbf24")],
-                        action: {
-                            selectedTab = 1 // Navigate to Infók tab
-                        }
-                    )
+                    // 2. Quick Action cards in HStack - Daily (left) and Urgent (right)
+                    HStack(spacing: 12) {
+                        QuickActionCard(
+                            title: "Napi",
+                            subtitle: "Új információk",
+                            emoji: "🟡",
+                            count: dailyCount,
+                            gradient: [Color(hex: "#f59e0b"), Color(hex: "#fbbf24")],
+                            action: {
+                                selectedTab = 1 // Navigate to Infók tab
+                            }
+                        )
 
-                    QuickActionCard(
-                        title: "Sürgős",
-                        subtitle: "Ma zárásig",
-                        emoji: "🔴",
-                        count: urgentCount,
-                        gradient: [Color(hex: "#dc2626"), Color(hex: "#ef4444")],
-                        action: {
-                            selectedTab = 1 // Navigate to Infók tab
-                        }
-                    )
+                        QuickActionCard(
+                            title: "Sürgős",
+                            subtitle: "Ma zárásig",
+                            emoji: "🔴",
+                            count: urgentCount,
+                            gradient: [Color(hex: "#dc2626"), Color(hex: "#ef4444")],
+                            action: {
+                                selectedTab = 1 // Navigate to Infók tab
+                            }
+                        )
+                    }
 
-                    // 3. Heti Info card (2 columns wide)
+                    // 3. Heti Info card (full width)
                     WeeklyInfoCard(weeklyCount: weeklyCount)
-                        .gridCellColumns(2)
 
-                    // 4. Wide card - Beosztás (2 columns wide)
+                    // 4. Wide card - Beosztás (full width)
                     WideCard(
                         icon: "👥",
                         title: "Beosztás",
@@ -65,7 +65,6 @@ struct HomeView: View {
                             // TODO: Navigate to Beosztás tab (not implemented yet)
                         }
                     )
-                    .gridCellColumns(2)
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 20)
