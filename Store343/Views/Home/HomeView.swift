@@ -7,6 +7,7 @@ import CoreData
 struct HomeView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.managedObjectContext) private var viewContext
+    @Binding var selectedTab: Int
 
     // Fetch all NapiInfos for statistics
     @FetchRequest(
@@ -24,22 +25,11 @@ struct HomeView: View {
         NavigationView {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 12) {
-                    // 1. Hero card - Week Status (2 columns wide)
-                    WeekStatusCard(urgentCount: urgentCount, dailyCount: dailyCount)
+                    // 1. Greeting Card (2 columns wide)
+                    GreetingCard()
                         .gridCellColumns(2)
 
-                    // 2. Quick Action cards - Urgent and Daily (1 column each)
-                    QuickActionCard(
-                        title: "Sürgős",
-                        subtitle: "Ma zárásig",
-                        emoji: "🔴",
-                        count: urgentCount,
-                        gradient: [Color(hex: "#dc2626"), Color(hex: "#ef4444")],
-                        action: {
-                            // TODO: Navigate to Infók tab with urgent filter
-                        }
-                    )
-
+                    // 2. Quick Action cards - Daily (left) and Urgent (right)
                     QuickActionCard(
                         title: "Napi",
                         subtitle: "Új információk",
@@ -47,32 +37,32 @@ struct HomeView: View {
                         count: dailyCount,
                         gradient: [Color(hex: "#f59e0b"), Color(hex: "#fbbf24")],
                         action: {
-                            // TODO: Navigate to Infók tab with daily filter
+                            selectedTab = 1 // Navigate to Infók tab
                         }
                     )
 
-                    // 3. Wide card - Beosztás (2 columns wide)
+                    QuickActionCard(
+                        title: "Sürgős",
+                        subtitle: "Ma zárásig",
+                        emoji: "🔴",
+                        count: urgentCount,
+                        gradient: [Color(hex: "#dc2626"), Color(hex: "#ef4444")],
+                        action: {
+                            selectedTab = 1 // Navigate to Infók tab
+                        }
+                    )
+
+                    // 3. Heti Info card (2 columns wide)
+                    WeeklyInfoCard(weeklyCount: weeklyCount)
+                        .gridCellColumns(2)
+
+                    // 4. Wide card - Beosztás (2 columns wide)
                     WideCard(
                         icon: "👥",
                         title: "Beosztás",
                         subtitle: "Csapatod és műszakok",
                         action: {
-                            // TODO: Navigate to Beosztás tab
-                        }
-                    )
-                    .gridCellColumns(2)
-
-                    // 4. Heti Info card (2 columns wide)
-                    WeeklyInfoCard(weeklyCount: weeklyCount)
-                        .gridCellColumns(2)
-
-                    // 5. Wide card - Termékek (2 columns wide)
-                    WideCard(
-                        icon: "📦",
-                        title: "Termékek",
-                        subtitle: "Készlet és árak kezelése",
-                        action: {
-                            // TODO: Navigate to Termékek tab
+                            // TODO: Navigate to Beosztás tab (not implemented yet)
                         }
                     )
                     .gridCellColumns(2)
