@@ -245,6 +245,8 @@ struct NapiInfoMainView: View {
 
             if let documentURL = newValue, let info = selectedInfoForUpload {
                 print("🔵 Calling processDocument...")
+                // Dismiss the sheet first
+                showDocumentPicker = false
                 processDocument(documentURL: documentURL, for: info)
             } else {
                 print("⚠️ Cannot process: documentURL=\(newValue != nil), info=\(selectedInfoForUpload != nil)")

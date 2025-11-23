@@ -78,15 +78,12 @@ struct DocumentPicker: UIViewControllerRepresentable {
                 try FileManager.default.copyItem(at: url, to: tempURL)
                 print("✅ File copied to temp: \(tempURL.path)")
 
-                // Set binding and dismiss on main thread
+                // Set binding on main thread (parent will handle dismiss)
                 DispatchQueue.main.async {
                     print("🔄 Setting selectedDocumentURL to: \(tempURL.lastPathComponent)")
                     self.parent.selectedDocumentURL = tempURL
                     print("✅ selectedDocumentURL set successfully")
-
-                    // Dismiss after setting the binding
-                    print("👋 Dismissing document picker")
-                    self.parent.presentationMode.wrappedValue.dismiss()
+                    print("✅ Parent view will handle sheet dismiss")
                 }
             } catch {
                 print("❌ Error copying document: \(error)")

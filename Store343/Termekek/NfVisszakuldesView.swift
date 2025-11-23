@@ -25,6 +25,7 @@ struct NfVisszakuldesView: View {
 
     @State private var searchText = ""
     @State private var selectedBizonylat: NfBizonylat? = nil
+    @FocusState private var isSearchFocused: Bool
 
     var body: some View {
         ZStack {
@@ -79,6 +80,8 @@ struct NfVisszakuldesView: View {
         }
         .onChange(of: selectedDocumentURL) { oldValue, newValue in
             if let documentURL = newValue {
+                // Dismiss the sheet first
+                showDocumentPicker = false
                 processDocument(documentURL: documentURL)
             }
         }
@@ -136,12 +139,27 @@ struct NfVisszakuldesView: View {
                             .foregroundColor(.secondary)
 
                         TextField("Cikkszám keresése...", text: $searchText)
-                            .keyboardType(.numberPad)
+                            .keyboardType(.numbersAndPunctuation)
+                            .focused($isSearchFocused)
+                            .submitLabel(.done)
+                            .onSubmit {
+                                // Hide keyboard when done
+                                isSearchFocused = false
+                            }
                     }
                     .padding()
                     .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
                     .cornerRadius(12)
                     .padding(.horizontal)
+                    .toolbar {
+                        ToolbarItemGroup(placement: .keyboard) {
+                            Spacer()
+                            Button("Kész") {
+                                isSearchFocused = false
+                            }
+                            .fontWeight(.semibold)
+                        }
+                    }
 
                     // Search Results
                     if !searchText.isEmpty {
@@ -202,8 +220,11 @@ struct NfVisszakuldesView: View {
                     .padding()
             } else {
                 ForEach(filteredTermekek, id: \.0.id) { termek, bizonylat in
-                    TermekSearchCard(termek: termek, bizonylat: bizonylat)
-                        .padding(.horizontal)
+                    TermekSearchCard(termek: termek, bizonylat: bizonylat) {
+                        // Clear search after save
+                        searchText = ""
+                    }
+                    .padding(.horizontal)
                 }
             }
         }
@@ -350,11 +371,18 @@ struct NfBizonylatCard: View {
 struct TermekSearchCard: View {
     let termek: NfTermek
     let bizonylat: NfBizonylat
+    let onSave: (() -> Void)?
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.managedObjectContext) private var viewContext
 
     @State private var mostTalaltam: String = ""
     @FocusState private var isFocused: Bool
+
+    init(termek: NfTermek, bizonylat: NfBizonylat, onSave: (() -> Void)? = nil) {
+        self.termek = termek
+        self.bizonylat = bizonylat
+        self.onSave = onSave
+    }
 
     var talalasokArray: [Int16] {
         guard let talalasok = termek.talalasok, !talalasok.isEmpty else { return [] }
@@ -453,6 +481,15 @@ struct TermekSearchCard: View {
         .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
         .cornerRadius(12)
         .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Kész") {
+                    isFocused = false
+                }
+                .fontWeight(.semibold)
+            }
+        }
     }
 
     func saveTalalas() {
@@ -472,6 +509,9 @@ struct TermekSearchCard: View {
             try viewContext.save()
             mostTalaltam = ""
             isFocused = false
+
+            // Notify parent to clear search
+            onSave?()
         } catch {
             print("Error saving: \(error)")
         }
