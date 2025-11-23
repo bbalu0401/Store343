@@ -239,18 +239,23 @@ struct NapiInfoMainView: View {
         .sheet(isPresented: $showDocumentPicker) {
             DocumentPicker(selectedDocumentURL: $selectedDocumentURL, allowedTypes: [.pdf])
         }
-        .onChange(of: selectedDocumentURL) { oldValue, newValue in
-            print("🔵 onChange triggered! oldValue: \(oldValue?.lastPathComponent ?? "nil"), newValue: \(newValue?.lastPathComponent ?? "nil")")
-            print("🔵 selectedInfoForUpload: \(selectedInfoForUpload != nil ? "exists" : "nil")")
+        .task(id: selectedDocumentURL) {
+            print("🟢 task(id:) triggered! selectedDocumentURL: \(selectedDocumentURL?.lastPathComponent ?? "nil")")
+            print("🟢 selectedInfoForUpload: \(selectedInfoForUpload != nil ? "exists" : "nil")")
+            print("🟢 showDocumentPicker: \(showDocumentPicker)")
 
-            if let documentURL = newValue, let info = selectedInfoForUpload {
-                print("🔵 Calling processDocument...")
-                // Dismiss the sheet first
-                showDocumentPicker = false
-                processDocument(documentURL: documentURL, for: info)
-            } else {
-                print("⚠️ Cannot process: documentURL=\(newValue != nil), info=\(selectedInfoForUpload != nil)")
+            guard let documentURL = selectedDocumentURL, let info = selectedInfoForUpload else {
+                print("⚠️ Cannot process: documentURL=\(selectedDocumentURL != nil), info=\(selectedInfoForUpload != nil)")
+                return
             }
+
+            print("🟢 Dismissing sheet and calling processDocument...")
+            await MainActor.run {
+                showDocumentPicker = false
+            }
+
+            print("🟢 About to call processDocument with file: \(documentURL.lastPathComponent)")
+            processDocument(documentURL: documentURL, for: info)
         }
         .alert("Dokumentum törlése", isPresented: $showDeleteConfirmation) {
             Button("Mégse", role: .cancel) {

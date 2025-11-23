@@ -78,12 +78,22 @@ struct NfVisszakuldesView: View {
                 ]
             )
         }
-        .onChange(of: selectedDocumentURL) { oldValue, newValue in
-            if let documentURL = newValue {
-                // Dismiss the sheet first
-                showDocumentPicker = false
-                processDocument(documentURL: documentURL)
+        .task(id: selectedDocumentURL) {
+            print("🟢 [NF] task(id:) triggered! selectedDocumentURL: \(selectedDocumentURL?.lastPathComponent ?? "nil")")
+            print("🟢 [NF] showDocumentPicker: \(showDocumentPicker)")
+
+            guard let documentURL = selectedDocumentURL else {
+                print("⚠️ [NF] No document URL to process")
+                return
             }
+
+            print("🟢 [NF] Dismissing sheet and calling processDocument...")
+            await MainActor.run {
+                showDocumentPicker = false
+            }
+
+            print("🟢 [NF] About to call processDocument with file: \(documentURL.lastPathComponent)")
+            processDocument(documentURL: documentURL)
         }
         .alert("Hiba", isPresented: $showError) {
             Button("OK", role: .cancel) { }
