@@ -26,7 +26,6 @@ struct NfVisszakuldesView: View {
     @State private var searchText = ""
     @State private var selectedBizonylat: NfBizonylat? = nil
     @FocusState private var isSearchFocused: Bool
-    @FocusState private var focusedTermekID: UUID?
 
     var body: some View {
         ZStack {
@@ -111,7 +110,7 @@ struct NfVisszakuldesView: View {
                 Spacer()
                 Button("Kész") {
                     isSearchFocused = false
-                    focusedTermekID = nil
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
                 .fontWeight(.semibold)
             }
@@ -230,7 +229,6 @@ struct NfVisszakuldesView: View {
                     TermekSearchCard(
                         termek: termek,
                         bizonylat: bizonylat,
-                        focusedTermekID: $focusedTermekID,
                         onSave: {
                             // Clear search and jump back to search field
                             searchText = ""
@@ -384,12 +382,12 @@ struct NfBizonylatCard: View {
 struct TermekSearchCard: View {
     let termek: NfTermek
     let bizonylat: NfBizonylat
-    @Binding var focusedTermekID: UUID?
     let onSave: () -> Void
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.managedObjectContext) private var viewContext
 
     @State private var mostTalaltam: String = ""
+    @FocusState private var isFocused: Bool
 
     var talalasokArray: [Int16] {
         guard let talalasok = termek.talalasok, !talalasok.isEmpty else { return [] }
@@ -461,7 +459,7 @@ struct TermekSearchCard: View {
 
                 TextField("Most találtam", text: $mostTalaltam)
                     .keyboardType(.numberPad)
-                    .focused($focusedTermekID, equals: termek.id)
+                    .focused($isFocused)
                     .font(.subheadline)
 
                 Text("db")
