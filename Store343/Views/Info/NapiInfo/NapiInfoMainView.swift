@@ -29,40 +29,40 @@ struct NapiInfoMainView: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Custom Navigation Bar
-            HStack {
-                Button(action: {
-                    selectedInfoType = nil
-                }) {
-                    HStack {
-                        Image(systemName: "chevron.left")
-                        Text("Vissza")
-                    }
-                    .foregroundColor(.lidlBlue)
-                }
-                
-                Spacer()
-                
-                Text("Napi Infó")
-                    .font(.headline)
-                
-                Spacer()
-                
-                Button(action: {}) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
-                }
-            }
-            .padding()
-            .background(Color.adaptiveBackground(colorScheme: colorScheme))
-            .overlay(
-                Divider()
-                    .background(Color.secondary.opacity(0.3)),
-                alignment: .bottom
-            )
-            
+        ZStack {
             if selectedInfo == nil {
+                VStack(spacing: 0) {
+                    // Navigation Bar (csak lista nézetben!)
+                    HStack {
+                        Button(action: {
+                            selectedInfoType = nil
+                        }) {
+                            HStack {
+                                Image(systemName: "chevron.left")
+                                Text("Vissza")
+                            }
+                            .foregroundColor(.lidlBlue)
+                        }
+
+                        Spacer()
+
+                        Text("Napi Infó")
+                            .font(.headline)
+
+                        Spacer()
+
+                        Button(action: {}) {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding()
+                    .background(Color.adaptiveBackground(colorScheme: colorScheme))
+                    .overlay(
+                        Divider()
+                            .background(Color.secondary.opacity(0.3)),
+                        alignment: .bottom
+                    )
                 // Date header
                 VStack(alignment: .leading, spacing: 8) {
                     Text(formatDateFull(selectedDate))
@@ -218,22 +218,24 @@ struct NapiInfoMainView: View {
                     }
                     .padding(.bottom, 100)
                 }
-                .background(Color.adaptiveBackground(colorScheme: colorScheme))
                 .gesture(
                     DragGesture(minimumDistance: 50)
                         .onEnded { gesture in
                             handleDaySwipe(gesture)
                         }
                 )
-            } else {
-                // Detail view
-                NapiInfoDetailView(info: selectedInfo!, onBack: {
+                }
+                .background(Color.adaptiveBackground(colorScheme: colorScheme))
+                .navigationBarHidden(true)
+            }
+
+            if let info = selectedInfo {
+                NapiInfoDetailView(info: info, onBack: {
                     selectedInfo = nil
                 })
+                .transition(.move(edge: .trailing))
             }
         }
-        .background(Color.adaptiveBackground(colorScheme: colorScheme))
-        .navigationBarHidden(true)
         .sheet(isPresented: $showDocumentPicker) {
             DocumentPicker(selectedDocumentURL: $selectedDocumentURL, allowedTypes: [.pdf])
         }
