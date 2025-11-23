@@ -11,9 +11,9 @@ struct NfVisszakuldesView: View {
     @Environment(\.managedObjectContext) private var viewContext
 
     @FetchRequest(
-        sortDescriptors: [NSSortDescriptor(keyPath: \NfBizonylat.bizonylatSzam, ascending: true)],
+        sortDescriptors: [NSSortDescriptor(keyPath: \NfHet.hetSzam, ascending: true)],
         animation: .default)
-    private var bizonylatok: FetchedResults<NfBizonylat>
+    private var hetek: FetchedResults<NfHet>
 
     @State private var showDocumentPicker = false
     @State private var selectedDocumentURL: URL? = nil
@@ -26,6 +26,40 @@ struct NfVisszakuldesView: View {
     @State private var searchText = ""
     @State private var selectedBizonylat: NfBizonylat? = nil
     @FocusState private var isSearchFocused: Bool
+    @State private var selectedWeek: Int = 0 // Current week number (1-52)
+
+    // MARK: - Computed Properties
+
+    /// Get current NfHet for selected week, or nil if doesn't exist yet
+    private var currentHet: NfHet? {
+        let currentYear = Calendar.current.component(.year, from: Date())
+        return hetek.first { $0.hetSzam == selectedWeek && $0.ev == currentYear }
+    }
+
+    /// Bizonylatok for the selected week only
+    private var filteredBizonylatok: [NfBizonylat] {
+        guard let het = currentHet else { return [] }
+        return (het.bizonylatokRelation as? Set<NfBizonylat>)?.sorted { ($0.bizonylatSzam ?? "") < ($1.bizonylatSzam ?? "") } ?? []
+    }
+
+    /// Get date range string for selected week
+    private func getWeekDateRange() -> String {
+        var calendar = Calendar.current
+        calendar.firstWeekday = 2 // Monday
+
+        let currentYear = Calendar.current.component(.year, from: Date())
+        guard let startOfYear = calendar.date(from: DateComponents(year: currentYear, month: 1, day: 1)),
+              let weekStart = calendar.date(byAdding: .weekOfYear, value: selectedWeek - 1, to: startOfYear) else {
+            return ""
+        }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "hu_HU")
+        formatter.dateFormat = "MM.dd"
+
+        let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart)!
+        return "\(formatter.string(from: weekStart))-\(formatter.string(from: weekEnd))"
+    }
 
     var body: some View {
         ZStack {
@@ -115,27 +149,39 @@ struct NfVisszakuldesView: View {
                 .fontWeight(.semibold)
             }
         }
+        .onAppear {
+            // Set to current week on first appear
+            if selectedWeek == 0 {
+                var calendar = Calendar.current
+                calendar.firstWeekday = 2 // Monday
+                selectedWeek = calendar.component(.weekOfYear, from: Date())
+            }
+        }
     }
 
     // MARK: - Main View
     var mainView: some View {
         ScrollView {
             VStack(spacing: 20) {
+                // Week Navigation Header
+                weekPickerView
+                    .padding(.horizontal)
+                    .padding(.top, 12)
+
                 // Upload Button
                 uploadButton
-                    .padding(.top, 20)
                     .padding(.horizontal)
 
                 // Bizonylatok Section
-                if !bizonylatok.isEmpty {
+                if !filteredBizonylatok.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("FELDOLGOZOTT BIZONYLATOK")
+                        Text("FELDOLGOZOTT BIZONYLATOK (\(selectedWeek). hét)")
                             .font(.caption)
                             .fontWeight(.semibold)
                             .foregroundColor(.secondary)
                             .padding(.horizontal)
 
-                        ForEach(bizonylatok, id: \.id) { bizonylat in
+                        ForEach(filteredBizonylatok, id: \.id) { bizonylat in
                             NfBizonylatCard(bizonylat: bizonylat) {
                                 selectedBizonylat = bizonylat
                             }
@@ -179,6 +225,55 @@ struct NfVisszakuldesView: View {
         }
     }
 
+    // MARK: - Week Picker View
+    var weekPickerView: some View {
+        HStack(spacing: 16) {
+            // Previous week button
+            Button(action: {
+                if selectedWeek > 1 {
+                    selectedWeek -= 1
+                }
+            }) {
+                Image(systemName: "chevron.left")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .foregroundColor(selectedWeek > 1 ? .lidlBlue : .gray)
+                    .frame(width: 44, height: 44)
+            }
+            .disabled(selectedWeek <= 1)
+
+            // Week display
+            VStack(spacing: 4) {
+                Text("\(selectedWeek). hét")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+
+                Text(getWeekDateRange())
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+
+            // Next week button
+            Button(action: {
+                if selectedWeek < 52 {
+                    selectedWeek += 1
+                }
+            }) {
+                Image(systemName: "chevron.right")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .foregroundColor(selectedWeek < 52 ? .lidlBlue : .gray)
+                    .frame(width: 44, height: 44)
+            }
+            .disabled(selectedWeek >= 52)
+        }
+        .padding()
+        .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
+        .cornerRadius(12)
+    }
+
     // MARK: - Upload Button
     var uploadButton: some View {
         Button(action: {
@@ -209,7 +304,8 @@ struct NfVisszakuldesView: View {
 
     // MARK: - Search Results
     var searchResultsView: some View {
-        let allTermekek = bizonylatok.flatMap { bizonylat -> [(NfTermek, NfBizonylat)] in
+        // Only search in current week's bizonylatok
+        let allTermekek = filteredBizonylatok.flatMap { bizonylat -> [(NfTermek, NfBizonylat)] in
             guard let termekSet = bizonylat.termekekRelation as? Set<NfTermek> else { return [] }
             return termekSet.map { ($0, bizonylat) }
         }
@@ -275,6 +371,10 @@ struct NfVisszakuldesView: View {
 
     // MARK: - Save to Core Data
     func saveToCoreData(_ claudeTermekek: [NfTermekResponse]) {
+        // Get or create NfHet for selected week
+        let currentYear = Int16(Calendar.current.component(.year, from: Date()))
+        let het = getOrCreateHet(weekNumber: Int16(selectedWeek), year: currentYear)
+
         // Group by bizonylat
         var bizonylatGroups: [String: [NfTermekResponse]] = [:]
 
@@ -287,14 +387,15 @@ struct NfVisszakuldesView: View {
 
         // Create or update bizonylatok
         for (bizonylatSzam, termekek) in bizonylatGroups {
-            // Check if bizonylat exists
-            let existingBizonylat = bizonylatok.first { $0.bizonylatSzam == bizonylatSzam }
+            // Check if bizonylat exists in current week
+            let existingBizonylat = filteredBizonylatok.first { $0.bizonylatSzam == bizonylatSzam }
 
             let bizonylat = existingBizonylat ?? NfBizonylat(context: viewContext)
             if existingBizonylat == nil {
                 bizonylat.id = UUID()
                 bizonylat.bizonylatSzam = bizonylatSzam
                 bizonylat.kesz = false
+                bizonylat.het = het // Assign to selected week
             }
 
             // Add termekek
@@ -328,6 +429,36 @@ struct NfVisszakuldesView: View {
             errorMessage = "Mentési hiba: \(error.localizedDescription)"
             showError = true
         }
+    }
+
+    // MARK: - Helper Functions
+
+    /// Get or create NfHet for given week number and year
+    private func getOrCreateHet(weekNumber: Int16, year: Int16) -> NfHet {
+        // Check if het already exists
+        if let existingHet = hetek.first(where: { $0.hetSzam == weekNumber && $0.ev == year }) {
+            return existingHet
+        }
+
+        // Create new het
+        let newHet = NfHet(context: viewContext)
+        newHet.id = UUID()
+        newHet.hetSzam = weekNumber
+        newHet.ev = year
+        newHet.befejezve = false
+
+        // Calculate start and end dates for this week
+        var calendar = Calendar.current
+        calendar.firstWeekday = 2 // Monday
+
+        let startOfYear = calendar.date(from: DateComponents(year: Int(year), month: 1, day: 1))!
+        let weekStart = calendar.date(byAdding: .weekOfYear, value: Int(weekNumber) - 1, to: startOfYear)!
+        let weekEnd = calendar.date(byAdding: .day, value: 6, to: weekStart)!
+
+        newHet.kezdoDatum = weekStart
+        newHet.vegDatum = weekEnd
+
+        return newHet
     }
 }
 
@@ -426,11 +557,35 @@ struct TermekSearchCard: View {
 
             Divider()
 
-            // Details
+            // Details with delete buttons
             if !talalasokArray.isEmpty {
-                Text("Részletek: " + talalasokArray.map { "\($0)" }.joined(separator: " + "))
-                    .font(.subheadline)
-                    .foregroundColor(.primary)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Részletek:")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    FlowLayout(spacing: 8) {
+                        ForEach(Array(talalasokArray.enumerated()), id: \.offset) { index, mennyiseg in
+                            HStack(spacing: 4) {
+                                Text("\(mennyiseg) db")
+                                    .font(.subheadline)
+                                    .foregroundColor(.primary)
+
+                                Button(action: {
+                                    deleteTalalas(at: index)
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                }
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.adaptiveCardBackground(colorScheme: colorScheme).opacity(0.5))
+                            .cornerRadius(6)
+                        }
+                    }
+                }
             }
 
             // Total (big and centered)
@@ -509,4 +664,68 @@ struct TermekSearchCard: View {
             print("Error saving: \(error)")
         }
     }
+
+    func deleteTalalas(at index: Int) {
+        var array = talalasokArray
+        guard index < array.count else { return }
+
+        // Remove the item at index
+        array.remove(at: index)
+
+        // Update termek
+        termek.talalasok = array.map { String($0) }.joined(separator: ",")
+        termek.osszesen = array.reduce(0, +)
+
+        do {
+            try viewContext.save()
+        } catch {
+            print("Error deleting talalas: \(error)")
+        }
+    }
 }
+
+// MARK: - Flow Layout for wrapping items
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let result = FlowResult(in: proposal.replacingUnspecifiedDimensions().width, subviews: subviews, spacing: spacing)
+        return result.size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let result = FlowResult(in: bounds.width, subviews: subviews, spacing: spacing)
+        for (index, subview) in subviews.enumerated() {
+            subview.place(at: CGPoint(x: bounds.minX + result.positions[index].x, y: bounds.minY + result.positions[index].y), proposal: .unspecified)
+        }
+    }
+
+    struct FlowResult {
+        var size: CGSize = .zero
+        var positions: [CGPoint] = []
+
+        init(in width: CGFloat, subviews: Subviews, spacing: CGFloat) {
+            var x: CGFloat = 0
+            var y: CGFloat = 0
+            var rowHeight: CGFloat = 0
+
+            for subview in subviews {
+                let size = subview.sizeThatFits(.unspecified)
+
+                if x + size.width > width && x > 0 {
+                    // New row
+                    x = 0
+                    y += rowHeight + spacing
+                    rowHeight = 0
+                }
+
+                positions.append(CGPoint(x: x, y: y))
+                x += size.width + spacing
+                rowHeight = max(rowHeight, size.height)
+            }
+
+            self.size = CGSize(width: width, height: y + rowHeight)
+        }
+    }
+}
+
