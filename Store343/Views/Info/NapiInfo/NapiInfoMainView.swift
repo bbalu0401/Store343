@@ -238,8 +238,14 @@ struct NapiInfoMainView: View {
             DocumentPicker(selectedDocumentURL: $selectedDocumentURL, allowedTypes: [.pdf])
         }
         .onChange(of: selectedDocumentURL) { oldValue, newValue in
+            print("🔵 onChange triggered! oldValue: \(oldValue?.lastPathComponent ?? "nil"), newValue: \(newValue?.lastPathComponent ?? "nil")")
+            print("🔵 selectedInfoForUpload: \(selectedInfoForUpload != nil ? "exists" : "nil")")
+
             if let documentURL = newValue, let info = selectedInfoForUpload {
+                print("🔵 Calling processDocument...")
                 processDocument(documentURL: documentURL, for: info)
+            } else {
+                print("⚠️ Cannot process: documentURL=\(newValue != nil), info=\(selectedInfoForUpload != nil)")
             }
         }
         .alert("Dokumentum törlése", isPresented: $showDeleteConfirmation) {
