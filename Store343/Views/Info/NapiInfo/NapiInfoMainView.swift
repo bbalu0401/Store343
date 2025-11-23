@@ -459,7 +459,6 @@ struct NapiInfoMainView: View {
                     try? viewContext.save()
 
                     processingOCR = false
-                    selectedImage = nil
                     selectedInfoForUpload = nil
 
                     // Show detail view after processing
@@ -471,7 +470,6 @@ struct NapiInfoMainView: View {
                 // Handle errors on main thread
                 await MainActor.run {
                     processingOCR = false
-                    selectedImage = nil
                     selectedInfoForUpload = nil
 
                     // Show error to user
