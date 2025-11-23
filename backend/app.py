@@ -142,8 +142,8 @@ Important:
 - Each block is a separate topic"""
 
         message = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=16384,  # Claude 3.5 Sonnet supports up to 64K output tokens
+            model="claude-sonnet-4-5-20250929",
+            max_tokens=16384,  # Claude Sonnet 4.5 supports up to 64K output tokens
             messages=[
                 {
                     "role": "user",
@@ -327,8 +327,8 @@ Important:
 
         print("🔵 [NF] Calling Claude API...")
         message = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=16384,  # Claude 3.5 Sonnet limit (64K available, using 16K for efficiency)
+            model="claude-sonnet-4-5-20250929",
+            max_tokens=16384,  # Claude Sonnet 4.5 limit (64K available, using 16K for efficiency)
             messages=[
                 {
                     "role": "user",
