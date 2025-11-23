@@ -5,12 +5,6 @@ import SwiftUI
 import CoreData
 import UniformTypeIdentifiers
 
-// MARK: - Focused Field Enum
-enum NfFocusedField: Hashable {
-    case search
-    case termekInput(UUID)
-}
-
 struct NfVisszakuldesView: View {
     @Binding var selectedType: String?
     @Environment(\.colorScheme) var colorScheme
@@ -31,7 +25,8 @@ struct NfVisszakuldesView: View {
 
     @State private var searchText = ""
     @State private var selectedBizonylat: NfBizonylat? = nil
-    @FocusState private var focusedField: NfFocusedField?
+    @FocusState private var isSearchFocused: Bool
+    @FocusState private var focusedTermekID: UUID?
 
     var body: some View {
         ZStack {
@@ -115,7 +110,8 @@ struct NfVisszakuldesView: View {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button("Kész") {
-                    focusedField = nil
+                    isSearchFocused = false
+                    focusedTermekID = nil
                 }
                 .fontWeight(.semibold)
             }
@@ -165,7 +161,7 @@ struct NfVisszakuldesView: View {
 
                         TextField("Cikkszám keresése...", text: $searchText)
                             .keyboardType(.numberPad)
-                            .focused($focusedField, equals: .search)
+                            .focused($isSearchFocused)
                     }
                     .padding()
                     .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
@@ -234,8 +230,12 @@ struct NfVisszakuldesView: View {
                     TermekSearchCard(
                         termek: termek,
                         bizonylat: bizonylat,
-                        focusedField: $focusedField,
-                        searchText: $searchText
+                        focusedTermekID: $focusedTermekID,
+                        onSave: {
+                            // Clear search and jump back to search field
+                            searchText = ""
+                            isSearchFocused = true
+                        }
                     )
                     .padding(.horizontal)
                 }
@@ -384,8 +384,8 @@ struct NfBizonylatCard: View {
 struct TermekSearchCard: View {
     let termek: NfTermek
     let bizonylat: NfBizonylat
-    @Binding var focusedField: NfFocusedField?
-    @Binding var searchText: String
+    @Binding var focusedTermekID: UUID?
+    let onSave: () -> Void
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.managedObjectContext) private var viewContext
 
@@ -461,7 +461,7 @@ struct TermekSearchCard: View {
 
                 TextField("Most találtam", text: $mostTalaltam)
                     .keyboardType(.numberPad)
-                    .focused($focusedField, equals: .termekInput(termek.id ?? UUID()))
+                    .focused($focusedTermekID, equals: termek.id)
                     .font(.subheadline)
 
                 Text("db")
@@ -506,8 +506,7 @@ struct TermekSearchCard: View {
         do {
             try viewContext.save()
             mostTalaltam = ""
-            focusedField = .search // Jump back to search field
-            searchText = "" // Clear search
+            onSave() // Clear search and jump back to search field
         } catch {
             print("Error saving: \(error)")
         }
