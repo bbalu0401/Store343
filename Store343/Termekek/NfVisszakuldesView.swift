@@ -26,10 +26,6 @@ struct NfVisszakuldesView: View {
     @State private var searchText = ""
     @State private var selectedBizonylat: NfBizonylat? = nil
 
-    // Debug
-    @State private var debugLogs: [String] = []
-    @State private var showDebugLog = false
-
     var body: some View {
         ZStack {
             if selectedBizonylat == nil {
@@ -52,12 +48,6 @@ struct NfVisszakuldesView: View {
                             .font(.headline)
 
                         Spacer()
-
-                        // Debug button
-                        Button(action: { showDebugLog.toggle() }) {
-                            Image(systemName: "ladybug.fill")
-                                .foregroundColor(showDebugLog ? .green : .secondary)
-                        }
                     }
                     .padding()
                     .background(Color.adaptiveBackground(colorScheme: colorScheme))
@@ -87,34 +77,9 @@ struct NfVisszakuldesView: View {
                 ]
             )
         }
-        .onChange(of: showDocumentPicker) { oldValue, newValue in
-            log("📂 showDocumentPicker: \(oldValue) → \(newValue)")
-        }
         .onChange(of: selectedDocumentURL) { oldValue, newValue in
-            log("🔄 selectedDocumentURL onChange TRIGGERED!")
-            log("   Old: \(oldValue?.lastPathComponent ?? "nil")")
-            log("   New: \(newValue?.lastPathComponent ?? "nil")")
-
             if let documentURL = newValue {
-                log("✅ Valid document URL, processing...")
-
-                // DEBUG: Show alert that processing started
-                DispatchQueue.main.async {
-                    successMessage = "DEBUG: Processing started for \(documentURL.lastPathComponent)"
-                    showSuccess = true
-                }
-
                 processDocument(documentURL: documentURL)
-            } else if oldValue != nil {
-                log("⚠️ URL reset to nil (after processing)")
-            } else {
-                log("⚠️ Both old and new are nil")
-
-                // DEBUG: Show alert that onChange was called but URL is nil
-                DispatchQueue.main.async {
-                    errorMessage = "DEBUG: onChange called but newValue is NIL!"
-                    showError = true
-                }
             }
         }
         .alert("Hiba", isPresented: $showError) {
@@ -126,54 +91,6 @@ struct NfVisszakuldesView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(successMessage ?? "Dokumentum sikeresen feldolgozva")
-        }
-        .onAppear {
-            log("🚀 NfVisszakuldesView appeared")
-        }
-        .overlay(alignment: .bottom) {
-            if showDebugLog {
-                VStack(spacing: 0) {
-                    HStack {
-                        Text("Debug Log")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                        Spacer()
-                        Button("Clear") {
-                            debugLogs.removeAll()
-                        }
-                        .foregroundColor(.yellow)
-                        Button("Close") {
-                            showDebugLog = false
-                        }
-                        .foregroundColor(.white)
-                    }
-                    .padding()
-                    .background(Color.black.opacity(0.9))
-
-                    ScrollView {
-                        ScrollViewReader { proxy in
-                            VStack(alignment: .leading, spacing: 4) {
-                                ForEach(Array(debugLogs.enumerated()), id: \.offset) { index, log in
-                                    Text(log)
-                                        .font(.system(size: 10, design: .monospaced))
-                                        .foregroundColor(.green)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .id(index)
-                                }
-                            }
-                            .padding()
-                            .onChange(of: debugLogs.count) { _, _ in
-                                if let lastIndex = debugLogs.indices.last {
-                                    proxy.scrollTo(lastIndex, anchor: .bottom)
-                                }
-                            }
-                        }
-                    }
-                    .frame(height: 300)
-                    .background(Color.black.opacity(0.9))
-                }
-                .transition(.move(edge: .bottom))
-            }
         }
     }
 
@@ -241,15 +158,7 @@ struct NfVisszakuldesView: View {
     // MARK: - Upload Button
     var uploadButton: some View {
         Button(action: {
-            log("🎯 Upload button tapped")
             showDocumentPicker = true
-            // Debug: Force show alert to verify button works
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                if !showDocumentPicker {
-                    errorMessage = "DEBUG: showDocumentPicker nem változott!"
-                    showError = true
-                }
-            }
         }) {
             HStack {
                 Image(systemName: "doc.badge.plus")
@@ -300,35 +209,21 @@ struct NfVisszakuldesView: View {
         }
     }
 
-    // MARK: - Debug Helper
-    func log(_ message: String) {
-        print(message)
-        DispatchQueue.main.async {
-            self.debugLogs.append("[\(Date().formatted(date: .omitted, time: .standard))] \(message)")
-        }
-    }
-
     // MARK: - Process Document
     func processDocument(documentURL: URL) {
-        log("📄 Starting document processing: \(documentURL.lastPathComponent)")
         isProcessing = true
         errorMessage = nil
 
         Task {
             do {
-                log("🚀 Calling backend API...")
                 let claudeTermekek = try await ClaudeAPIService.shared.processNfVisszakuldesDocument(documentURL: documentURL)
 
-                log("✅ Backend returned \(claudeTermekek.count) termékek")
-
                 await MainActor.run {
-                    log("💾 Saving to Core Data...")
                     saveToCoreData(claudeTermekek)
 
                     let bizonylatCount = Set(claudeTermekek.map { $0.bizonylat_szam }).count
                     successMessage = "Sikeresen feldolgozva: \(bizonylatCount) bizonylat, \(claudeTermekek.count) termék"
                     showSuccess = true
-                    log("✅ Saved! \(bizonylatCount) bizonylat, \(claudeTermekek.count) termék")
 
                     // Cleanup temp file
                     try? FileManager.default.removeItem(at: documentURL)
@@ -336,7 +231,6 @@ struct NfVisszakuldesView: View {
                     isProcessing = false
                 }
             } catch {
-                log("❌ Error: \(error.localizedDescription)")
                 await MainActor.run {
                     errorMessage = "Feldolgozási hiba: \(error.localizedDescription)"
                     showError = true
