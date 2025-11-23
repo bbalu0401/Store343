@@ -109,11 +109,14 @@ def process_napi_info():
     }
     """
     try:
+        print("📄 [NAPI] process-napi-info endpoint called")
         data = request.get_json()
+        print(f"📄 [NAPI] Request data keys: {list(data.keys()) if data else 'None'}")
 
         # Accept both 'image_base64' (images) and 'document_base64' (PDFs)
         image_base64 = data.get('image_base64') or data.get('document_base64')
         if not image_base64:
+            print("❌ [NAPI] Missing image_base64 or document_base64")
             return jsonify({
                 "success": False,
                 "error": "Missing image_base64 or document_base64 in request"
@@ -121,6 +124,7 @@ def process_napi_info():
 
         # Accept both 'image_type' and 'document_type'
         image_type = data.get('image_type') or data.get('document_type', 'image/jpeg')
+        print(f"📄 [NAPI] Document type: {image_type}, base64 length: {len(image_base64)}")
 
         # Prepare messages for Claude
         prompt = """Analyze this Hungarian LIDL Napi Információ PDF document. Extract ALL topics/sections.
@@ -181,6 +185,7 @@ Return ONLY valid JSON array, no markdown, no explanation:
 
 CRITICAL: Extract ALL topics from ALL pages of the PDF!"""
 
+        print("📄 [NAPI] Calling Claude API...")
         message = client.messages.create(
             model="claude-sonnet-4-5-20250929",
             max_tokens=16384,  # Claude Sonnet 4.5 supports up to 64K output tokens
@@ -204,6 +209,7 @@ CRITICAL: Extract ALL topics from ALL pages of the PDF!"""
                 }
             ],
         )
+        print(f"📄 [NAPI] Claude API response received. Tokens: input={message.usage.input_tokens}, output={message.usage.output_tokens}")
 
         # Extract JSON from response
         response_text = message.content[0].text.strip()
@@ -215,7 +221,9 @@ CRITICAL: Extract ALL topics from ALL pages of the PDF!"""
                 response_text = response_text[4:]
             response_text = response_text.strip()
 
+        print(f"📄 [NAPI] Parsing JSON response (length: {len(response_text)})")
         blocks = json.loads(response_text)
+        print(f"📄 [NAPI] Successfully parsed {len(blocks)} blocks")
 
         return jsonify({
             "success": True,
@@ -227,14 +235,19 @@ CRITICAL: Extract ALL topics from ALL pages of the PDF!"""
         }), 200
 
     except json.JSONDecodeError as e:
+        print(f"❌ [NAPI] JSON decode error: {str(e)}")
+        print(f"❌ [NAPI] Response text: {response_text[:500]}")
+        traceback.print_exc()
         return jsonify({
             "success": False,
             "error": f"Failed to parse AI response as JSON: {str(e)}"
         }), 500
     except Exception as e:
+        print(f"❌ [NAPI] Exception: {type(e).__name__}: {str(e)}")
+        traceback.print_exc()
         return jsonify({
             "success": False,
-            "error": str(e)
+            "error": f"{type(e).__name__}: {str(e)}"
         }), 500
 
 @app.route('/api/process-nf-visszakuldes', methods=['POST'])
