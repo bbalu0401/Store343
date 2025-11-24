@@ -15,10 +15,10 @@ public enum HianycikkKategoria: String, CaseIterable, Identifiable {
 
     public var displayName: String {
         switch self {
-        case .troso: return "📦 Troso"
-        case .mopro: return "❄️ Mopro"
-        case .tiko: return "🧊 Tiko"
-        case .bakeoff: return "🥖 Bakeoff"
+        case .troso: return "Troso"
+        case .mopro: return "Mopro"
+        case .tiko: return "Tiko"
+        case .bakeoff: return "Bakeoff"
         }
     }
 
@@ -51,9 +51,9 @@ public enum HianycikkPrioritas: String, CaseIterable, Identifiable {
 
     public var displayName: String {
         switch self {
-        case .surgos: return "🔴 Sürgős"
-        case .normal: return "🟡 Normál"
-        case .alacsony: return "🟢 Alacsony"
+        case .surgos: return "Sürgős"
+        case .normal: return "Normál"
+        case .alacsony: return "Alacsony"
         }
     }
 
@@ -94,11 +94,11 @@ public enum HianycikkStatusz: String, CaseIterable, Identifiable {
 
     public var displayName: String {
         switch self {
-        case .uj: return "🟢 Új"
-        case .rendelesreVar: return "🟡 Rendelésre vár"
-        case .megrendelve: return "🔵 Megrendelve"
-        case .megerkezett: return "✅ Megérkezett"
-        case .lezarva: return "⚫ Lezárva"
+        case .uj: return "Új"
+        case .rendelesreVar: return "Rendelésre vár"
+        case .megrendelve: return "Megrendelve"
+        case .megerkezett: return "Megérkezett"
+        case .lezarva: return "Lezárva"
         }
     }
 
