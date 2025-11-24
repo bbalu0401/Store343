@@ -13,7 +13,32 @@ struct HianycikkReszletekView: View {
     @State private var showDeleteAlert = false
 
     var body: some View {
-        NavigationView {
+        VStack(spacing: 0) {
+            // Header with close button
+            HStack {
+                Button("Bezár") {
+                    dismiss()
+                }
+                .foregroundColor(.lidlBlue)
+
+                Spacer()
+
+                Text("Részletek")
+                    .font(.headline)
+
+                Spacer()
+
+                // Placeholder for symmetry
+                Color.clear.frame(width: 60)
+            }
+            .padding()
+            .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
+            .overlay(
+                Divider()
+                    .background(Color.secondary.opacity(0.3)),
+                alignment: .bottom
+            )
+
             ScrollView {
                 VStack(spacing: 20) {
                     // Header
@@ -88,22 +113,14 @@ struct HianycikkReszletekView: View {
                 .padding()
             }
             .background(Color.adaptiveBackground(colorScheme: colorScheme))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Bezár") {
-                        dismiss()
-                    }
-                }
-            }
-            .alert("Hiány megszüntetése", isPresented: $showDeleteAlert) {
+        }
+        .alert("Hiány megszüntetése", isPresented: $showDeleteAlert) {
                 Button("Mégse", role: .cancel) { }
                 Button("Megszüntet", role: .destructive) {
                     megszuntetHiany()
                 }
-            } message: {
-                Text("Biztosan megszünteted ezt a hiánycikket? Ez a művelet nem visszavonható.")
-            }
+        } message: {
+            Text("Biztosan megszünteted ezt a hiánycikket? Ez a művelet nem visszavonható.")
         }
     }
 

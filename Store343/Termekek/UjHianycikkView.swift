@@ -24,7 +24,29 @@ struct UjHianycikkView: View {
     @State private var processingOCR = false
 
     var body: some View {
-        NavigationView {
+        VStack(spacing: 0) {
+            // Header with close button
+            HStack {
+                Spacer()
+                Text("Új hiánycikk")
+                    .font(.headline)
+                Spacer()
+            }
+            .overlay(
+                Button("Mégse") {
+                    dismiss()
+                }
+                .foregroundColor(.lidlBlue),
+                alignment: .leading
+            )
+            .padding()
+            .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
+            .overlay(
+                Divider()
+                    .background(Color.secondary.opacity(0.3)),
+                alignment: .bottom
+            )
+
             ScrollView {
                 VStack(spacing: 20) {
                     // OCR Button
@@ -112,16 +134,8 @@ struct UjHianycikkView: View {
                 .padding()
             }
             .background(Color.adaptiveBackground(colorScheme: colorScheme))
-            .navigationTitle("Új hiánycikk")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Mégse") {
-                        dismiss()
-                    }
-                }
-            }
-            .alert("Hiánycikk rögzítése", isPresented: $showAlert) {
+        }
+        .alert("Hiánycikk rögzítése", isPresented: $showAlert) {
                 Button("OK", role: .cancel) {
                     if alertMessage.contains("Sikeres") {
                         dismiss()
@@ -182,7 +196,6 @@ struct UjHianycikkView: View {
                     }
                 }
             )
-        }
     }
 
     // MARK: - Helper Functions
