@@ -42,7 +42,6 @@
 		F86263F58D594BB98D6F930E /* NfBizonylatDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F048A20F427F428AAC5A72D0 /* NfBizonylatDetailView.swift */; };
 		15656E3993C44C3D84708A55 /* HianycikkModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49797A3C04A14BB9B37B2993 /* HianycikkModels.swift */; };
 		E90DC9CFAF75460885149E82 /* HianycikkKategoriaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B1420D7492E4FA49F486AC1 /* HianycikkKategoriaView.swift */; };
-		A972E25493684452A3E53158 /* HianycikkReszletekView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D93B3CCB30B49849AB713F5 /* HianycikkReszletekView.swift */; };
 		1E795BA0F97F4FDB812A451F /* UjHianycikkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FA57120A95545F89A0C0513 /* UjHianycikkView.swift */; };
 		95B867C46BA647B581E1C70A /* RendelesiListaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE8EAF4566E348829E080CA2 /* RendelesiListaView.swift */; };
 		/* End PBXBuildFile section */
@@ -84,7 +83,6 @@
 		F048A20F427F428AAC5A72D0 /* NfBizonylatDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NfBizonylatDetailView.swift; sourceTree = "<group>"; };
 		49797A3C04A14BB9B37B2993 /* HianycikkModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HianycikkModels.swift; sourceTree = "<group>"; };
 		2B1420D7492E4FA49F486AC1 /* HianycikkKategoriaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HianycikkKategoriaView.swift; sourceTree = "<group>"; };
-		5D93B3CCB30B49849AB713F5 /* HianycikkReszletekView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HianycikkReszletekView.swift; sourceTree = "<group>"; };
 		5FA57120A95545F89A0C0513 /* UjHianycikkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UjHianycikkView.swift; sourceTree = "<group>"; };
 		BE8EAF4566E348829E080CA2 /* RendelesiListaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RendelesiListaView.swift; sourceTree = "<group>"; };
 		/* End PBXFileReference section */
@@ -207,9 +205,8 @@
 				BA333A3C2EBFD02B0012B6AA /* NfTermekListView.swift */,
 				BA333A3E2EBFD02D0012B6AA /* NfOCRProcessView.swift */,
 				F048A20F427F428AAC5A72D0 /* NfBizonylatDetailView.swift */,
-			
+
 				2B1420D7492E4FA49F486AC1 /* HianycikkKategoriaView.swift */,
-				5D93B3CCB30B49849AB713F5 /* HianycikkReszletekView.swift */,
 				5FA57120A95545F89A0C0513 /* UjHianycikkView.swift */,
 				BE8EAF4566E348829E080CA2 /* RendelesiListaView.swift */,);
 			path = Termekek;
@@ -336,7 +333,6 @@
 			
 				15656E3993C44C3D84708A55 /* HianycikkModels.swift in Sources */,
 				E90DC9CFAF75460885149E82 /* HianycikkKategoriaView.swift in Sources */,
-				A972E25493684452A3E53158 /* HianycikkReszletekView.swift in Sources */,
 				1E795BA0F97F4FDB812A451F /* UjHianycikkView.swift in Sources */,
 				95B867C46BA647B581E1C70A /* RendelesiListaView.swift in Sources */,);
 			runOnlyForDeploymentPostprocessing = 0;
