@@ -88,14 +88,11 @@ class AppleVisionOCRService {
             }
         }
 
-        // Second pass: Find product name using position and confidence
-        // Product names are typically:
-        // 1. On the LEFT side of the image (x coordinate < 0.5)
-        // 2. Bold text (larger bounding box height)
-        // 3. Below brand name (like "pick" or other brands)
-        // 4. Mostly letters with few numbers
+        // Second pass: Find product name
+        // Strategy: Product names are ALWAYS on the LEFT side and are the LARGEST/BOLDEST text
+        // They appear below brand names (like "pick") and are clearly distinguishable by size
 
-        var productNameCandidates: [(text: String, score: Float)] = []
+        var productNameCandidates: [(text: String, height: CGFloat, leftPosition: CGFloat)] = []
 
         for item in textItems {
             let trimmedText = item.text.trimmingCharacters(in: .whitespaces)
@@ -108,13 +105,14 @@ class AppleVisionOCRService {
                 continue
             }
 
-            // Skip brand names like "pick", "PICK", etc.
+            // Skip common brand names (case-insensitive)
             let lowercaseText = trimmedText.lowercased()
-            if lowercaseText == "pick" || lowercaseText == "bio" || lowercaseText == "organic" {
+            let brandNames = ["pick", "bio", "organic", "lidl", "combino", "lovilio", "vitasia"]
+            if brandNames.contains(lowercaseText) {
                 continue
             }
 
-            // Check if line is mostly letters (product name characteristic)
+            // Check if mostly letters (product names are text, not numbers)
             let letterCount = trimmedText.filter { $0.isLetter || $0.isWhitespace || $0 == "," || $0 == "." || $0 == "-" }.count
             let digitCount = trimmedText.filter { $0.isNumber }.count
 
@@ -123,57 +121,27 @@ class AppleVisionOCRService {
                 continue
             }
 
-            // Calculate score based on multiple factors
-            var score: Float = 0.0
+            // MUST be on the LEFT side (minX < 0.5)
+            let leftPosition = item.position.minX
+            guard leftPosition < 0.5 else { continue }
 
-            // Factor 1: LEFT side position - THIS IS CRITICAL for product names!
-            // Product names always start on the left side
-            let horizontalStart = item.position.minX
-            if horizontalStart < 0.4 { // Left side of image
-                score += 50.0 // High priority for left-aligned text
-                // Extra bonus for being very far left
-                if horizontalStart < 0.2 {
-                    score += 30.0
-                }
-            } else if horizontalStart > 0.6 { // Right side - likely not product name
-                score -= 30.0
-            }
-
-            // Factor 2: Vertical position - prefer middle area (not too top, not too bottom)
-            let verticalCenter = item.position.midY
-            if verticalCenter > 0.25 && verticalCenter < 0.75 {
-                score += 20.0
-            }
-
-            // Factor 3: Size (BOLD text has larger bounding box height) - CRITICAL!
-            let boxHeight = item.position.height
-            if boxHeight > 0.04 { // Large/bold text
-                score += 40.0
-            } else if boxHeight > 0.03 {
-                score += 25.0
-            }
-
-            // Factor 4: Confidence (bold text typically has higher confidence)
-            score += item.confidence * 15.0
-
-            // Factor 5: Text length (product names are usually 10-50 chars)
-            if trimmedText.count >= 10 && trimmedText.count <= 60 {
-                score += 15.0
-            }
-
-            // Factor 6: Multiple words (product names usually have 2+ words)
-            let wordCount = trimmedText.components(separatedBy: .whitespaces).filter { !$0.isEmpty }.count
-            if wordCount >= 2 {
-                score += 20.0
-            }
-
-            productNameCandidates.append((text: trimmedText, score: score))
+            // Add to candidates with height and position
+            let height = item.position.height
+            productNameCandidates.append((text: trimmedText, height: height, leftPosition: leftPosition))
         }
 
-        // Sort by score and pick the best candidate
-        productNameCandidates.sort { $0.score > $1.score }
+        // Find the text with the LARGEST height that is on the LEFT side
+        // Sort by: 1) height (descending), 2) left position (ascending - prefer more left)
+        productNameCandidates.sort { (a, b) in
+            if abs(a.height - b.height) > 0.005 { // If height difference is significant
+                return a.height > b.height  // Prefer larger/bolder text
+            } else {
+                return a.leftPosition < b.leftPosition  // If similar height, prefer more left
+            }
+        }
 
-        if let bestCandidate = productNameCandidates.first, bestCandidate.score > 30.0 {
+        // Take the best candidate (largest, leftmost text)
+        if let bestCandidate = productNameCandidates.first {
             cikkMegnev = bestCandidate.text
         }
 

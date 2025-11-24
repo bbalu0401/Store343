@@ -219,7 +219,7 @@ struct StatisztikaCard: View {
                         .font(.title2)
                         .fontWeight(.bold)
                         .foregroundColor(.yellow)
-                    Text("Vár feldolgozásra")
+                    Text("Feldolgozásra vár")
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
