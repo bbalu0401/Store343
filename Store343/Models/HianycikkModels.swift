@@ -5,7 +5,7 @@ import Foundation
 import SwiftUI
 
 // MARK: - Kategória Enum
-enum HianycikkKategoria: String, CaseIterable, Identifiable {
+public enum HianycikkKategoria: String, CaseIterable, Identifiable {
     case troso = "troso"
     case mopro = "mopro"
     case tiko = "tiko"
@@ -42,7 +42,7 @@ enum HianycikkKategoria: String, CaseIterable, Identifiable {
 }
 
 // MARK: - Prioritás Enum
-enum HianycikkPrioritas: String, CaseIterable, Identifiable {
+public enum HianycikkPrioritas: String, CaseIterable, Identifiable {
     case surgos = "surgos"
     case normal = "normal"
     case alacsony = "alacsony"
@@ -83,7 +83,7 @@ enum HianycikkPrioritas: String, CaseIterable, Identifiable {
 }
 
 // MARK: - Státusz Enum
-enum HianycikkStatusz: String, CaseIterable, Identifiable {
+public enum HianycikkStatusz: String, CaseIterable, Identifiable {
     case uj = "uj"
     case rendelesreVar = "rendelesre_var"
     case megrendelve = "megrendelve"
@@ -124,7 +124,7 @@ enum HianycikkStatusz: String, CaseIterable, Identifiable {
 }
 
 // MARK: - HianycikkEntity Extension
-extension HianycikkEntity {
+public extension HianycikkEntity {
     var kategoriaEnum: HianycikkKategoria? {
         get {
             guard let kategoria = kategoria else { return nil }
