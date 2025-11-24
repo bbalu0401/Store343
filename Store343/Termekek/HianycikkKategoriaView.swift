@@ -14,8 +14,7 @@ struct HianycikkKategoriaView: View {
     @FetchRequest private var termekek: FetchedResults<HianycikkEntity>
 
     @State private var searchText = ""
-    @State private var selectedTermek: HianycikkEntity? = nil
-    @State private var showReszletek = false
+    @State private var selectedTermekForSheet: HianycikkEntity? = nil
 
     init(kategoria: HianycikkKategoria, onBack: @escaping () -> Void) {
         self.kategoria = kategoria
@@ -109,8 +108,7 @@ struct HianycikkKategoriaView: View {
                         ForEach(filteredTermekek, id: \.id) { termek in
                             TermekCard(termek: termek)
                                 .onTapGesture {
-                                    selectedTermek = termek
-                                    showReszletek = true
+                                    selectedTermekForSheet = termek
                                 }
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                     Button(role: .destructive) {
@@ -126,10 +124,16 @@ struct HianycikkKategoriaView: View {
             }
         }
         .background(Color.adaptiveBackground(colorScheme: colorScheme))
-        .sheet(isPresented: $showReszletek) {
-            if let termek = selectedTermek {
-                HianycikkReszletekView(termek: termek)
+        .onChange(of: selectedTermekForSheet) { oldValue, newValue in
+            // Debug what's happening
+            if let newVal = newValue {
+                print("DEBUG: selectedTermekForSheet changed to: \(newVal.cikkMegnev ?? "nil")")
+            } else {
+                print("DEBUG: selectedTermekForSheet is nil")
             }
+        }
+        .sheet(item: $selectedTermekForSheet) { termek in
+            HianycikkReszletekView(termek: termek)
         }
     }
 

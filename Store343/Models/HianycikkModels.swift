@@ -124,6 +124,10 @@ public enum HianycikkStatusz: String, CaseIterable, Identifiable {
 }
 
 // MARK: - HianycikkEntity Extension
+extension HianycikkEntity: Identifiable {
+    // id property already exists in CoreData entity as UUID
+}
+
 public extension HianycikkEntity {
     var kategoriaEnum: HianycikkKategoria? {
         get {
