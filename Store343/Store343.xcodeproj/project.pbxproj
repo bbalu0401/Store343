@@ -25,6 +25,7 @@
 		BA333A2A2EBFCFC20012B6AA /* Store343.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = BA333A282EBFCFC20012B6AA /* Store343.xcdatamodeld */; };
 		BA333A2B2EBFD0010012B6AA /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA333A2D2EBFD0030012B6AA /* ImagePicker.swift */; };
 		FBCE0625A10D433FA025BE55 /* ClaudeAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 536A6DBCF93643FB844C7C0D /* ClaudeAPIService.swift */; };
+		AA111B22C33D44E55F667788 /* AppleVisionOCRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB222C33D44E55F66778899A /* AppleVisionOCRService.swift */; };
 		BA333A312EBFD0200012B6AA /* TermekekHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA333A302EBFD01F0012B6AA /* TermekekHubView.swift */; };
 		BA333A332EBFD0220012B6AA /* ElosztasokView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA333A322EBFD0210012B6AA /* ElosztasokView.swift */; };
 		BA333A352EBFD0240012B6AA /* HianycikkekView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA333A342EBFD0230012B6AA /* HianycikkekView.swift */; };
@@ -66,6 +67,7 @@
 		BA333A292EBFCFC20012B6AA /* Store343.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = Store343.xcdatamodel; sourceTree = "<group>"; };
 		BA333A2D2EBFD0030012B6AA /* ImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePicker.swift; sourceTree = "<group>"; };
 		536A6DBCF93643FB844C7C0D /* ClaudeAPIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeAPIService.swift; sourceTree = "<group>"; };
+		BB222C33D44E55F66778899A /* AppleVisionOCRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleVisionOCRService.swift; sourceTree = "<group>"; };
 		BA333A302EBFD01F0012B6AA /* TermekekHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TermekekHubView.swift; sourceTree = "<group>"; };
 		BA333A322EBFD0210012B6AA /* ElosztasokView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ElosztasokView.swift; sourceTree = "<group>"; };
 		BA333A342EBFD0230012B6AA /* HianycikkekView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HianycikkekView.swift; sourceTree = "<group>"; };
@@ -218,6 +220,7 @@
 			children = (
 				BA333A2D2EBFD0030012B6AA /* ImagePicker.swift */,
 				536A6DBCF93643FB844C7C0D /* ClaudeAPIService.swift */,
+				BB222C33D44E55F66778899A /* AppleVisionOCRService.swift */,
 				CD8EE23E4DDB4D4A9729A2CB /* DocumentPicker.swift */,
 			);
 			path = Helpers;
@@ -318,6 +321,7 @@
 				BA3339DA2EBFC7A20012B6AA /* HomeView.swift in Sources */,
 				BA333A2B2EBFD0010012B6AA /* ImagePicker.swift in Sources */,
 				FBCE0625A10D433FA025BE55 /* ClaudeAPIService.swift in Sources */,
+				AA111B22C33D44E55F667788 /* AppleVisionOCRService.swift in Sources */,
 				BA333A312EBFD0200012B6AA /* TermekekHubView.swift in Sources */,
 				BA333A332EBFD0220012B6AA /* ElosztasokView.swift in Sources */,
 				BA333A352EBFD0240012B6AA /* HianycikkekView.swift in Sources */,

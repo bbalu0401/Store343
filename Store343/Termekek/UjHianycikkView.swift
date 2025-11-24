@@ -22,6 +22,13 @@ struct UjHianycikkView: View {
     @State private var showAlert = false
     @State private var alertMessage = ""
 
+    // OCR states
+    @State private var showImagePicker = false
+    @State private var showSourceSelector = false
+    @State private var imageSourceType: UIImagePickerController.SourceType = .camera
+    @State private var selectedImage: UIImage? = nil
+    @State private var processingOCR = false
+
     var body: some View {
         NavigationView {
             ScrollView {
@@ -29,6 +36,25 @@ struct UjHianycikkView: View {
                     // 1️⃣ Termék keresése
                     SectionCard(title: "1️⃣  Termék keresése") {
                         VStack(spacing: 16) {
+                            // OCR Button
+                            Button(action: {
+                                showSourceSelector = true
+                            }) {
+                                HStack {
+                                    Image(systemName: "camera.fill")
+                                    Text("📸 Ártábla fotózása (OCR)")
+                                        .fontWeight(.semibold)
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.lidlYellow)
+                                .cornerRadius(12)
+                            }
+
+                            Divider()
+                                .padding(.vertical, 4)
+
                             // Cikkszám
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("🔍 Cikkszám vagy vonalkód")
@@ -197,6 +223,58 @@ struct UjHianycikkView: View {
             } message: {
                 Text(alertMessage)
             }
+            .actionSheet(isPresented: $showSourceSelector) {
+                ActionSheet(
+                    title: Text("Ártábla fotózása"),
+                    message: Text("Válassz forrást"),
+                    buttons: [
+                        .default(Text("📷 Fotó készítése")) {
+                            imageSourceType = .camera
+                            showImagePicker = true
+                        },
+                        .default(Text("🖼️ Galéria")) {
+                            imageSourceType = .photoLibrary
+                            showImagePicker = true
+                        },
+                        .cancel(Text("Mégse"))
+                    ]
+                )
+            }
+            .sheet(isPresented: $showImagePicker) {
+                ImagePicker(selectedImage: $selectedImage, sourceType: imageSourceType)
+            }
+            .onChange(of: selectedImage) { oldValue, newValue in
+                if let image = newValue {
+                    processOCR(image: image)
+                }
+            }
+            .overlay(
+                Group {
+                    if processingOCR {
+                        ZStack {
+                            Color.black.opacity(0.4)
+                                .ignoresSafeArea()
+
+                            VStack(spacing: 16) {
+                                ProgressView()
+                                    .scaleEffect(1.5)
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .lidlYellow))
+
+                                Text("Apple Vision feldolgozás...")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+
+                                Text("Ártábla elemzése folyamatban")
+                                    .font(.caption)
+                                    .foregroundColor(.white.opacity(0.8))
+                            }
+                            .padding(30)
+                            .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
+                            .cornerRadius(20)
+                        }
+                    }
+                }
+            )
         }
     }
 
@@ -236,6 +314,51 @@ struct UjHianycikkView: View {
         } catch {
             alertMessage = "Hiba történt a mentés során: \(error.localizedDescription)"
             showAlert = true
+        }
+    }
+
+    // MARK: - OCR Processing
+    private func processOCR(image: UIImage) {
+        processingOCR = true
+
+        Task {
+            do {
+                // Use Apple Vision Framework
+                let result = try await AppleVisionOCRService.shared.recognizeText(from: image)
+
+                // Update UI on main thread
+                await MainActor.run {
+                    if let recognizedCikkszam = result.cikkszam {
+                        cikkszam = recognizedCikkszam
+                    }
+
+                    if let recognizedMegnev = result.cikkMegnev {
+                        cikkMegnev = recognizedMegnev
+                    }
+
+                    // Show success message
+                    if result.isValid {
+                        alertMessage = "✅ OCR sikeres!\n\nFelismert adatok:\n" +
+                                     (result.cikkszam != nil ? "Cikkszám: \(result.cikkszam!)\n" : "") +
+                                     (result.cikkMegnev != nil ? "Megnevezés: \(result.cikkMegnev!)" : "")
+                        showAlert = true
+                    } else {
+                        alertMessage = "⚠️ Nem sikerült felismerni a cikkszámot vagy a terméknevet.\nKérlek add meg manuálisan!"
+                        showAlert = true
+                    }
+
+                    processingOCR = false
+                    selectedImage = nil
+                }
+            } catch {
+                // Handle errors on main thread
+                await MainActor.run {
+                    alertMessage = "❌ Hiba az OCR feldolgozás során:\n\(error.localizedDescription)"
+                    showAlert = true
+                    processingOCR = false
+                    selectedImage = nil
+                }
+            }
         }
     }
 }
