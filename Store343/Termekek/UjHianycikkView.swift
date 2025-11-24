@@ -12,7 +12,7 @@ struct UjHianycikkView: View {
     @State private var cikkszam: String = ""
     @State private var cikkMegnev: String = ""
     @State private var vonalkod: String = ""
-    @State private var selectedKategoria: HianycikkKategoria = .elelmiszer
+    @State private var selectedKategoria: HianycikkKategoria = .troso
     @State private var selectedPrioritas: HianycikkPrioritas = .normal
     @State private var jegyzetek: String = ""
     @State private var elviKeszlet: String = "0"

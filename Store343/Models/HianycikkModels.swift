@@ -6,41 +6,37 @@ import SwiftUI
 
 // MARK: - Kategória Enum
 enum HianycikkKategoria: String, CaseIterable, Identifiable {
-    case elelmiszer = "elelmiszer"
-    case italok = "italok"
-    case drogeria = "drogeria"
-    case haztartas = "haztartas"
-    case egyeb = "egyeb"
+    case troso = "troso"
+    case mopro = "mopro"
+    case tiko = "tiko"
+    case bakeoff = "bakeoff"
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
-        case .elelmiszer: return "🛒 Élelmiszer"
-        case .italok: return "🍷 Italok"
-        case .drogeria: return "🧴 Drogéria"
-        case .haztartas: return "🏠 Háztartás"
-        case .egyeb: return "📦 Egyéb"
+        case .troso: return "📦 Troso"
+        case .mopro: return "❄️ Mopro"
+        case .tiko: return "🧊 Tiko"
+        case .bakeoff: return "🥖 Bakeoff"
         }
     }
 
     var emoji: String {
         switch self {
-        case .elelmiszer: return "🛒"
-        case .italok: return "🍷"
-        case .drogeria: return "🧴"
-        case .haztartas: return "🏠"
-        case .egyeb: return "📦"
+        case .troso: return "📦"
+        case .mopro: return "❄️"
+        case .tiko: return "🧊"
+        case .bakeoff: return "🥖"
         }
     }
 
     var color: Color {
         switch self {
-        case .elelmiszer: return .green
-        case .italok: return .blue
-        case .drogeria: return .purple
-        case .haztartas: return .orange
-        case .egyeb: return .gray
+        case .troso: return .brown
+        case .mopro: return .blue
+        case .tiko: return .cyan
+        case .bakeoff: return .orange
         }
     }
 }
