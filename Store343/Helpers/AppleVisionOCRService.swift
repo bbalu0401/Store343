@@ -90,9 +90,10 @@ class AppleVisionOCRService {
 
         // Second pass: Find product name using position and confidence
         // Product names are typically:
-        // 1. In the middle/center of the image (vertically)
-        // 2. Bold text (higher confidence, larger bounding box)
-        // 3. Mostly letters with few numbers
+        // 1. On the LEFT side of the image (x coordinate < 0.5)
+        // 2. Bold text (larger bounding box height)
+        // 3. Below brand name (like "pick" or other brands)
+        // 4. Mostly letters with few numbers
 
         var productNameCandidates: [(text: String, score: Float)] = []
 
@@ -104,6 +105,12 @@ class AppleVisionOCRService {
 
             // Skip if it's the cikkszám we already found
             if let foundCikkszam = cikkszam, trimmedText.contains(foundCikkszam) {
+                continue
+            }
+
+            // Skip brand names like "pick", "PICK", etc.
+            let lowercaseText = trimmedText.lowercased()
+            if lowercaseText == "pick" || lowercaseText == "bio" || lowercaseText == "organic" {
                 continue
             }
 
@@ -119,34 +126,45 @@ class AppleVisionOCRService {
             // Calculate score based on multiple factors
             var score: Float = 0.0
 
-            // Factor 1: Position - prefer middle of image (y coordinate around 0.3-0.7)
-            let verticalCenter = item.position.midY
-            if verticalCenter > 0.25 && verticalCenter < 0.75 {
-                score += 30.0
-                // Bonus for being very centered
-                if verticalCenter > 0.35 && verticalCenter < 0.65 {
-                    score += 20.0
+            // Factor 1: LEFT side position - THIS IS CRITICAL for product names!
+            // Product names always start on the left side
+            let horizontalStart = item.position.minX
+            if horizontalStart < 0.4 { // Left side of image
+                score += 50.0 // High priority for left-aligned text
+                // Extra bonus for being very far left
+                if horizontalStart < 0.2 {
+                    score += 30.0
                 }
+            } else if horizontalStart > 0.6 { // Right side - likely not product name
+                score -= 30.0
             }
 
-            // Factor 2: Confidence (bold text typically has higher confidence)
-            score += item.confidence * 20.0
-
-            // Factor 3: Size (bold text has larger bounding box height)
-            let boxHeight = item.position.height
-            if boxHeight > 0.03 { // Relatively large text
+            // Factor 2: Vertical position - prefer middle area (not too top, not too bottom)
+            let verticalCenter = item.position.midY
+            if verticalCenter > 0.25 && verticalCenter < 0.75 {
                 score += 20.0
             }
 
-            // Factor 4: Text length (product names are usually 10-50 chars)
-            if trimmedText.count >= 10 && trimmedText.count <= 60 {
-                score += 10.0
+            // Factor 3: Size (BOLD text has larger bounding box height) - CRITICAL!
+            let boxHeight = item.position.height
+            if boxHeight > 0.04 { // Large/bold text
+                score += 40.0
+            } else if boxHeight > 0.03 {
+                score += 25.0
             }
 
-            // Factor 5: Multiple words (product names usually have 2+ words)
+            // Factor 4: Confidence (bold text typically has higher confidence)
+            score += item.confidence * 15.0
+
+            // Factor 5: Text length (product names are usually 10-50 chars)
+            if trimmedText.count >= 10 && trimmedText.count <= 60 {
+                score += 15.0
+            }
+
+            // Factor 6: Multiple words (product names usually have 2+ words)
             let wordCount = trimmedText.components(separatedBy: .whitespaces).filter { !$0.isEmpty }.count
             if wordCount >= 2 {
-                score += 15.0
+                score += 20.0
             }
 
             productNameCandidates.append((text: trimmedText, score: score))
