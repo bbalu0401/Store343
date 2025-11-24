@@ -84,41 +84,49 @@ public enum HianycikkPrioritas: String, CaseIterable, Identifiable {
 
 // MARK: - Státusz Enum
 public enum HianycikkStatusz: String, CaseIterable, Identifiable {
-    case uj = "uj"
-    case rendelesreVar = "rendelesre_var"
-    case megrendelve = "megrendelve"
-    case megerkezett = "megerkezett"
-    case lezarva = "lezarva"
+    case ujMaiBeérkezés = "uj_mai_beerkezes"
+    case holnapiBeerkezes = "holnapi_beerkezes"
+    case rosszKeszlet = "rossz_keszlet"
+    case adsTermek = "ads_termek"
+    case kozpontiHianycikk = "kozponti_hianycikk"
+    case maradekAru = "maradek_aru"
+    case megszuntetve = "megszuntetve"
 
     public var id: String { rawValue }
 
     public var displayName: String {
         switch self {
-        case .uj: return "Új"
-        case .rendelesreVar: return "Rendelésre vár"
-        case .megrendelve: return "Megrendelve"
-        case .megerkezett: return "Megérkezett"
-        case .lezarva: return "Lezárva"
+        case .ujMaiBeérkezés: return "Új mai beérkezés"
+        case .holnapiBeerkezes: return "Holnapi beérkezés"
+        case .rosszKeszlet: return "Rossz készlet"
+        case .adsTermek: return "ADS termék"
+        case .kozpontiHianycikk: return "Központi hiánycikk"
+        case .maradekAru: return "Maradék áru"
+        case .megszuntetve: return "Hiánycikk megszüntetve"
         }
     }
 
     public var emoji: String {
         switch self {
-        case .uj: return "🟢"
-        case .rendelesreVar: return "🟡"
-        case .megrendelve: return "🔵"
-        case .megerkezett: return "✅"
-        case .lezarva: return "⚫"
+        case .ujMaiBeérkezés: return "✅"
+        case .holnapiBeerkezes: return "📅"
+        case .rosszKeszlet: return "❌"
+        case .adsTermek: return "🎯"
+        case .kozpontiHianycikk: return "🏢"
+        case .maradekAru: return "📉"
+        case .megszuntetve: return "⚫"
         }
     }
 
     public var color: Color {
         switch self {
-        case .uj: return .green
-        case .rendelesreVar: return .orange
-        case .megrendelve: return .blue
-        case .megerkezett: return .green
-        case .lezarva: return .gray
+        case .ujMaiBeérkezés: return .green
+        case .holnapiBeerkezes: return .blue
+        case .rosszKeszlet: return .red
+        case .adsTermek: return .purple
+        case .kozpontiHianycikk: return .orange
+        case .maradekAru: return .brown
+        case .megszuntetve: return .gray
         }
     }
 }

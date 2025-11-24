@@ -214,7 +214,7 @@ struct UjHianycikkView: View {
         ujHianycikk.cikkMegnev = cikkMegnev.isEmpty ? nil : cikkMegnev
         ujHianycikk.kategoria = selectedKategoria.rawValue
         ujHianycikk.prioritas = HianycikkPrioritas.normal.rawValue
-        ujHianycikk.statusz = HianycikkStatusz.uj.rawValue
+        ujHianycikk.statusz = HianycikkStatusz.ujMaiBeérkezés.rawValue
         ujHianycikk.elviKeszlet = 0
         ujHianycikk.raktarKeszlet = 0
         ujHianycikk.minKeszlet = 0
@@ -254,17 +254,7 @@ struct UjHianycikkView: View {
                         cikkMegnev = recognizedMegnev
                     }
 
-                    // Show success message
-                    if result.isValid {
-                        alertMessage = "✅ OCR sikeres!\n\nFelismert adatok:\n" +
-                                     (result.cikkszam != nil ? "Cikkszám: \(result.cikkszam!)\n" : "") +
-                                     (result.cikkMegnev != nil ? "Megnevezés: \(result.cikkMegnev!)" : "")
-                        showAlert = true
-                    } else {
-                        alertMessage = "⚠️ Nem sikerült felismerni a cikkszámot vagy a terméknevet.\nKérlek add meg manuálisan!"
-                        showAlert = true
-                    }
-
+                    // Silently update fields without showing alert
                     processingOCR = false
                     selectedImage = nil
                 }

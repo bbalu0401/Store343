@@ -30,9 +30,14 @@ class AppleVisionOCRService {
                     return
                 }
 
-                // Extract all recognized text
-                let recognizedStrings = observations.compactMap { observation in
-                    observation.topCandidates(1).first?.string
+                // Extract all recognized text with multiple candidates for better accuracy
+                var recognizedStrings: [String] = []
+                for observation in observations {
+                    // Try top 3 candidates and pick the best one
+                    let candidates = observation.topCandidates(3)
+                    if let bestCandidate = candidates.first {
+                        recognizedStrings.append(bestCandidate.string)
+                    }
                 }
 
                 // Parse the recognized text
@@ -57,45 +62,75 @@ class AppleVisionOCRService {
     private func parseHianycikkText(from lines: [String]) -> HianycikkOCRResult {
         var cikkszam: String?
         var cikkMegnev: String?
+        var cikkszamIndex: Int?
 
         // Pattern for cikkszám (usually 6-8 digits)
         let cikkszamPattern = #"(\d{6,8})"#
         let cikkszamRegex = try? NSRegularExpression(pattern: cikkszamPattern)
 
-        for line in lines {
+        // First pass: Find cikkszám
+        for (index, line) in lines.enumerated() {
             let trimmedLine = line.trimmingCharacters(in: .whitespaces)
 
-            // Try to find cikkszám
             if cikkszam == nil {
                 let range = NSRange(trimmedLine.startIndex..., in: trimmedLine)
                 if let match = cikkszamRegex?.firstMatch(in: trimmedLine, range: range) {
                     if let matchRange = Range(match.range, in: trimmedLine) {
                         cikkszam = String(trimmedLine[matchRange])
-                    }
-                }
-            }
-
-            // If line contains mostly letters and is longer than 3 chars, consider it as product name
-            if cikkMegnev == nil && trimmedLine.count > 3 {
-                let letterCount = trimmedLine.filter { $0.isLetter || $0.isWhitespace }.count
-                if Double(letterCount) / Double(trimmedLine.count) > 0.5 {
-                    // Skip if it looks like a cikkszám line
-                    if !(trimmedLine.contains(where: { $0.isNumber }) && trimmedLine.count < 15) {
-                        cikkMegnev = trimmedLine
+                        cikkszamIndex = index
+                        break
                     }
                 }
             }
         }
 
-        // If we found a cikkszám, look for the product name on nearby lines
-        if let foundCikkszam = cikkszam, cikkMegnev == nil {
-            // Look for product name after cikkszám
-            if let cikkszamIndex = lines.firstIndex(where: { $0.contains(foundCikkszam) }) {
-                // Check next few lines
-                for i in (cikkszamIndex + 1)..<min(cikkszamIndex + 4, lines.count) {
-                    let candidateLine = lines[i].trimmingCharacters(in: .whitespaces)
-                    if candidateLine.count > 3 && !candidateLine.contains(where: { $0.isNumber }) {
-                        cikkMegnev = candidateLine
+        // Second pass: Find product name (improved logic)
+        if let foundIndex = cikkszamIndex {
+            // Look for product name in the next 5 lines after cikkszám
+            var productNameParts: [String] = []
+
+            for i in (foundIndex + 1)..<min(foundIndex + 6, lines.count) {
+                let candidateLine = lines[i].trimmingCharacters(in: .whitespaces)
+
+                // Skip empty lines
+                if candidateLine.isEmpty { continue }
+
+                // Skip lines with only numbers or very short lines
+                if candidateLine.count < 3 { continue }
+
+                // Check if line is mostly letters (product name characteristic)
+                let letterCount = candidateLine.filter { $0.isLetter || $0.isWhitespace || $0 == "," || $0 == "." }.count
+                let digitCount = candidateLine.filter { $0.isNumber }.count
+
+                // If line is mostly text and has few numbers, it's likely part of product name
+                if letterCount > digitCount && letterCount > candidateLine.count / 2 {
+                    productNameParts.append(candidateLine)
+                } else if !productNameParts.isEmpty {
+                    // Stop if we've collected parts and hit a non-name line
+                    break
+                }
+
+                // Stop after collecting reasonable amount of text
+                if productNameParts.joined(separator: " ").count > 50 {
+                    break
+                }
+            }
+
+            // Combine parts into full product name
+            if !productNameParts.isEmpty {
+                cikkMegnev = productNameParts.joined(separator: " ")
+            }
+        }
+
+        // Fallback: If no cikkszám found, still try to find a product name
+        if cikkMegnev == nil {
+            for line in lines {
+                let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+
+                if trimmedLine.count > 5 {
+                    let letterCount = trimmedLine.filter { $0.isLetter || $0.isWhitespace }.count
+                    if Double(letterCount) / Double(trimmedLine.count) > 0.6 {
+                        cikkMegnev = trimmedLine
                         break
                     }
                 }

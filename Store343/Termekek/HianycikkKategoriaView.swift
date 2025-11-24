@@ -14,7 +14,8 @@ struct HianycikkKategoriaView: View {
     @FetchRequest private var termekek: FetchedResults<HianycikkEntity>
 
     @State private var searchText = ""
-    @State private var selectedTermekForSheet: HianycikkEntity? = nil
+    @State private var selectedTermek: HianycikkEntity? = nil
+    @State private var showStatusActionSheet = false
 
     init(kategoria: HianycikkKategoria, onBack: @escaping () -> Void) {
         self.kategoria = kategoria
@@ -108,14 +109,16 @@ struct HianycikkKategoriaView: View {
                         ForEach(filteredTermekek, id: \.id) { termek in
                             TermekCard(termek: termek)
                                 .onTapGesture {
-                                    selectedTermekForSheet = termek
+                                    selectedTermek = termek
+                                    showStatusActionSheet = true
                                 }
                                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                     Button(role: .destructive) {
-                                        torolTermek(termek)
+                                        megszuntetHianycikk(termek)
                                     } label: {
-                                        Label("Törlés", systemImage: "trash.fill")
+                                        Label("Megszüntet", systemImage: "checkmark.circle.fill")
                                     }
+                                    .tint(.green)
                                 }
                         }
                     }
@@ -124,16 +127,22 @@ struct HianycikkKategoriaView: View {
             }
         }
         .background(Color.adaptiveBackground(colorScheme: colorScheme))
-        .onChange(of: selectedTermekForSheet) { oldValue, newValue in
-            // Debug what's happening
-            if let newVal = newValue {
-                print("DEBUG: selectedTermekForSheet changed to: \(newVal.cikkMegnev ?? "nil")")
-            } else {
-                print("DEBUG: selectedTermekForSheet is nil")
+        .confirmationDialog("Termék állapota", isPresented: $showStatusActionSheet, presenting: selectedTermek) { termek in
+            ForEach(HianycikkStatusz.allCases.filter { $0 != .megszuntetve }) { status in
+                Button(action: {
+                    changeStatus(termek: termek, to: status)
+                }) {
+                    Text("\(status.emoji) \(status.displayName)")
+                }
             }
-        }
-        .sheet(item: $selectedTermekForSheet) { termek in
-            HianycikkReszletekView(termek: termek)
+
+            Button(role: .destructive, action: {
+                megszuntetHianycikk(termek)
+            }) {
+                Text("⚫ Hiánycikk megszüntetése")
+            }
+
+            Button("Mégse", role: .cancel) { }
         }
     }
 
@@ -167,17 +176,29 @@ struct HianycikkKategoriaView: View {
     }
 
     // MARK: - Actions
-    private func torolTermek(_ termek: HianycikkEntity) {
+    private func changeStatus(termek: HianycikkEntity, to status: HianycikkStatusz) {
+        termek.statusz = status.rawValue
+        termek.modositva = Date()
+
+        do {
+            try viewContext.save()
+        } catch {
+            print("Hiba az állapot változtatása során: \(error)")
+        }
+    }
+
+    private func megszuntetHianycikk(_ termek: HianycikkEntity) {
         // Lezárja a hiánycikket
         termek.lezarva = true
         termek.lezarasDatuma = Date()
-        termek.statusz = HianycikkStatusz.lezarva.rawValue
+        termek.statusz = HianycikkStatusz.megszuntetve.rawValue
+        termek.modositva = Date()
 
         // Mentés
         do {
             try viewContext.save()
         } catch {
-            print("Hiba a termék törlése során: \(error)")
+            print("Hiba a hiánycikk megszüntetése során: \(error)")
         }
     }
 }

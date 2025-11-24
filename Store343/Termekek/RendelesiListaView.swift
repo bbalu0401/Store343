@@ -1,5 +1,5 @@
 // RendelesiListaView.swift
-// Order list view with selected items for ordering
+// Összesítő nézet - állapot és kategória szerint csoportosítva
 
 import SwiftUI
 import CoreData
@@ -11,114 +11,46 @@ struct RendelesiListaView: View {
 
     @FetchRequest(
         sortDescriptors: [
-            NSSortDescriptor(keyPath: \HianycikkEntity.kategoria, ascending: true),
-            NSSortDescriptor(keyPath: \HianycikkEntity.cikkszam, ascending: true)
+            NSSortDescriptor(keyPath: \HianycikkEntity.statusz, ascending: true),
+            NSSortDescriptor(keyPath: \HianycikkEntity.kategoria, ascending: true)
         ],
-        predicate: NSPredicate(format: "statusz == %@ AND lezarva == NO", HianycikkStatusz.rendelesreVar.rawValue),
+        predicate: NSPredicate(format: "lezarva == NO"),
         animation: .default)
-    private var rendelesreVaroTermekek: FetchedResults<HianycikkEntity>
-
-    @State private var selectedTermekIds: Set<UUID> = []
-    @State private var showExportOptions = false
-    @State private var showVeglegesitesAlert = false
+    private var osszesTermek: FetchedResults<HianycikkEntity>
 
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
                 // Összesítő card
-                OsszesitoCard(
-                    kijeloltDb: selectedTermekIds.count,
-                    osszesDb: rendelesreVaroTermekek.count
-                )
-                .padding()
-
-                // Tömeges műveletek
-                HStack(spacing: 12) {
-                    Button(action: osszesKijelolese) {
-                        Text("Összes kijelölése")
-                            .font(.subheadline)
-                            .foregroundColor(.lidlBlue)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.lidlBlue.opacity(0.1))
-                            .cornerRadius(8)
-                    }
-
-                    Button(action: kijelelesTorlese) {
-                        Text("Kijelölés törlése")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.secondary.opacity(0.1))
-                            .cornerRadius(8)
-                    }
-                }
-                .padding(.horizontal)
+                OsszesitoCard(osszesDb: osszesTermek.count)
+                    .padding()
 
                 // Lista
-                if rendelesreVaroTermekek.isEmpty {
+                if osszesTermek.isEmpty {
                     emptyStateView
                 } else {
                     ScrollView {
                         VStack(spacing: 16) {
-                            Text("Kategóriák szerint:")
+                            Text("Állapotok szerint:")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal)
                                 .padding(.top, 8)
 
-                            ForEach(kategoriacsoportok, id: \.kategoria) { csoport in
-                                KategoriaCsoport(
-                                    kategoria: csoport.kategoria,
-                                    termekek: csoport.termekek,
-                                    selectedIds: $selectedTermekIds
+                            ForEach(allapotCsoportok, id: \.statusz) { allapotCsoport in
+                                AllapotCsoport(
+                                    statusz: allapotCsoport.statusz,
+                                    kategoriaCsoportok: allapotCsoport.kategoriaCsoportok
                                 )
                             }
                         }
                         .padding()
                     }
                 }
-
-                // Action buttons
-                VStack(spacing: 12) {
-                    Button(action: {
-                        showExportOptions = true
-                    }) {
-                        HStack {
-                            Image(systemName: "square.and.arrow.up")
-                            Text("Rendelés exportálása")
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.lidlYellow)
-                        .cornerRadius(12)
-                    }
-                    .disabled(selectedTermekIds.isEmpty)
-                    .opacity(selectedTermekIds.isEmpty ? 0.5 : 1.0)
-
-                    Button(action: {
-                        showVeglegesitesAlert = true
-                    }) {
-                        HStack {
-                            Image(systemName: "checkmark.circle.fill")
-                            Text("✅ Rendelés véglegesítése")
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.lidlBlue)
-                        .cornerRadius(12)
-                    }
-                    .disabled(selectedTermekIds.isEmpty)
-                    .opacity(selectedTermekIds.isEmpty ? 0.5 : 1.0)
-                }
-                .padding()
             }
             .background(Color.adaptiveBackground(colorScheme: colorScheme))
-            .navigationTitle("Rendelési lista")
+            .navigationTitle("Összesítő")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -127,40 +59,41 @@ struct RendelesiListaView: View {
                     }
                 }
             }
-            .confirmationDialog("Export opciók", isPresented: $showExportOptions) {
-                Button("Email") { exportEmail() }
-                Button("PDF") { exportPDF() }
-                Button("CSV") { exportCSV() }
-                Button("Mégse", role: .cancel) { }
-            }
-            .alert("Rendelés véglegesítése", isPresented: $showVeglegesitesAlert) {
-                Button("Mégse", role: .cancel) { }
-                Button("Véglegesítés", role: .destructive) {
-                    veglegesitRendeles()
-                }
-            } message: {
-                Text("Biztosan véglegesíted a rendelést? A kijelölt termékek státusza 'Megrendelve'-re változik.")
-            }
-            .onAppear {
-                // Auto-select all items on appear
-                selectedTermekIds = Set(rendelesreVaroTermekek.map { $0.id! })
-            }
         }
     }
 
     // MARK: - Computed Properties
-    private var kategoriacsoportok: [KategoriaCsoportData] {
-        var groups: [HianycikkKategoria: [HianycikkEntity]] = [:]
+    private var allapotCsoportok: [AllapotCsoportData] {
+        // First group by status
+        var statusGroups: [HianycikkStatusz: [HianycikkEntity]] = [:]
 
-        for termek in rendelesreVaroTermekek {
-            if let kategoriaString = termek.kategoria,
-               let kategoria = HianycikkKategoria(rawValue: kategoriaString) {
-                groups[kategoria, default: []].append(termek)
+        for termek in osszesTermek {
+            if let statuszString = termek.statusz,
+               let statusz = HianycikkStatusz(rawValue: statuszString),
+               statusz != .megszuntetve {
+                statusGroups[statusz, default: []].append(termek)
             }
         }
 
-        return groups.map { KategoriaCsoportData(kategoria: $0.key, termekek: $0.value) }
-            .sorted { $0.kategoria.rawValue < $1.kategoria.rawValue }
+        // Then group each status by category
+        var result: [AllapotCsoportData] = []
+        for (statusz, termekek) in statusGroups {
+            var categoryGroups: [HianycikkKategoria: [HianycikkEntity]] = [:]
+
+            for termek in termekek {
+                if let kategoriaString = termek.kategoria,
+                   let kategoria = HianycikkKategoria(rawValue: kategoriaString) {
+                    categoryGroups[kategoria, default: []].append(termek)
+                }
+            }
+
+            let kategoriaCsoportok = categoryGroups.map { KategoriaCsoportData(kategoria: $0.key, termekek: $0.value) }
+                .sorted { $0.kategoria.rawValue < $1.kategoria.rawValue }
+
+            result.append(AllapotCsoportData(statusz: statusz, kategoriaCsoportok: kategoriaCsoportok))
+        }
+
+        return result.sorted { $0.statusz.rawValue < $1.statusz.rawValue }
     }
 
     // MARK: - Empty State
@@ -169,10 +102,10 @@ struct RendelesiListaView: View {
             Image(systemName: "list.clipboard")
                 .font(.system(size: 60))
                 .foregroundColor(.lidlBlue)
-            Text("Nincs rendelésre váró termék")
+            Text("Nincs aktív hiánycikk")
                 .font(.headline)
                 .foregroundColor(.secondary)
-            Text("Adj hozzá termékeket a rendeléshez a részletek nézetből")
+            Text("Jelenleg minden termék készleten van")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -180,47 +113,14 @@ struct RendelesiListaView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
     }
-
-    // MARK: - Helper Functions
-    private func osszesKijelolese() {
-        selectedTermekIds = Set(rendelesreVaroTermekek.map { $0.id! })
-    }
-
-    private func kijelelesTorlese() {
-        selectedTermekIds.removeAll()
-    }
-
-    private func exportEmail() {
-        // TODO: Implement email export
-        print("Export to Email")
-    }
-
-    private func exportPDF() {
-        // TODO: Implement PDF export
-        print("Export to PDF")
-    }
-
-    private func exportCSV() {
-        // TODO: Implement CSV export
-        print("Export to CSV")
-    }
-
-    private func veglegesitRendeles() {
-        for termek in rendelesreVaroTermekek where selectedTermekIds.contains(termek.id!) {
-            termek.statusz = HianycikkStatusz.megrendelve.rawValue
-            termek.modositva = Date()
-        }
-
-        do {
-            try viewContext.save()
-            dismiss()
-        } catch {
-            print("Error saving: \(error)")
-        }
-    }
 }
 
 // MARK: - Data Structures
+struct AllapotCsoportData {
+    let statusz: HianycikkStatusz
+    let kategoriaCsoportok: [KategoriaCsoportData]
+}
+
 struct KategoriaCsoportData {
     let kategoria: HianycikkKategoria
     let termekek: [HianycikkEntity]
@@ -228,7 +128,6 @@ struct KategoriaCsoportData {
 
 // MARK: - Összesítő Card
 struct OsszesitoCard: View {
-    let kijeloltDb: Int
     let osszesDb: Int
     @Environment(\.colorScheme) var colorScheme
 
@@ -242,19 +141,7 @@ struct OsszesitoCard: View {
 
             HStack(spacing: 20) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Kiválasztva:")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    Text("\(kijeloltDb) termék")
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .foregroundColor(Color.adaptiveText(colorScheme: colorScheme))
-                }
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text("Összes:")
+                    Text("Összes hiánycikk:")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     Text("\(osszesDb) termék")
@@ -262,6 +149,8 @@ struct OsszesitoCard: View {
                         .fontWeight(.bold)
                         .foregroundColor(Color.adaptiveText(colorScheme: colorScheme))
                 }
+
+                Spacer()
             }
         }
         .padding()
@@ -271,18 +160,70 @@ struct OsszesitoCard: View {
     }
 }
 
-// MARK: - Kategória Csoport
-struct KategoriaCsoport: View {
-    let kategoria: HianycikkKategoria
-    let termekek: [HianycikkEntity]
-    @Binding var selectedIds: Set<UUID>
+// MARK: - Állapot Csoport
+struct AllapotCsoport: View {
+    let statusz: HianycikkStatusz
+    let kategoriaCsoportok: [KategoriaCsoportData]
     @Environment(\.colorScheme) var colorScheme
 
     @State private var isExpanded = true
 
+    private var osszesTermekDb: Int {
+        kategoriaCsoportok.reduce(0) { $0 + $1.termekek.count }
+    }
+
     var body: some View {
         VStack(spacing: 12) {
-            // Header
+            // Status Header
+            Button(action: {
+                withAnimation {
+                    isExpanded.toggle()
+                }
+            }) {
+                VStack(spacing: 0) {
+                    HStack {
+                        Text(statusz.emoji)
+                            .font(.title2)
+                        Text("\(statusz.displayName) (\(osszesTermekDb) db)")
+                            .font(.headline)
+                            .foregroundColor(Color.adaptiveText(colorScheme: colorScheme))
+                        Spacer()
+                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                            .foregroundColor(.secondary)
+                    }
+                    .padding()
+                    .background(statusz.color.opacity(0.1))
+                    .cornerRadius(12)
+                }
+            }
+
+            // Category Groups
+            if isExpanded {
+                VStack(spacing: 12) {
+                    ForEach(kategoriaCsoportok, id: \.kategoria) { kategoriaCsoport in
+                        KategoriaAlCsoport(
+                            kategoria: kategoriaCsoport.kategoria,
+                            termekek: kategoriaCsoport.termekek
+                        )
+                    }
+                }
+                .padding(.leading, 16)
+            }
+        }
+    }
+}
+
+// MARK: - Kategória Alcsoport
+struct KategoriaAlCsoport: View {
+    let kategoria: HianycikkKategoria
+    let termekek: [HianycikkEntity]
+    @Environment(\.colorScheme) var colorScheme
+
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(spacing: 8) {
+            // Category Header
             Button(action: {
                 withAnimation {
                     isExpanded.toggle()
@@ -291,70 +232,69 @@ struct KategoriaCsoport: View {
                 HStack {
                     Text(kategoria.emoji)
                         .font(.title3)
-                    Text("\(kategoria.displayName) (\(termekek.count) tétel)")
-                        .font(.headline)
+                    Text("\(kategoria.displayName) (\(termekek.count) db)")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
                         .foregroundColor(Color.adaptiveText(colorScheme: colorScheme))
                     Spacer()
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 .padding()
                 .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
-                .cornerRadius(12)
+                .cornerRadius(10)
             }
 
             // Items
             if isExpanded {
-                VStack(spacing: 8) {
+                VStack(spacing: 6) {
                     ForEach(termekek, id: \.id) { termek in
-                        RendelesiTermekCard(
-                            termek: termek,
-                            isSelected: selectedIds.contains(termek.id!)
-                        ) {
-                            if selectedIds.contains(termek.id!) {
-                                selectedIds.remove(termek.id!)
-                            } else {
-                                selectedIds.insert(termek.id!)
-                            }
-                        }
+                        OsszesitoTermekCard(termek: termek)
                     }
                 }
+                .padding(.leading, 8)
             }
         }
     }
 }
 
-// MARK: - Rendelési Termék Card
-struct RendelesiTermekCard: View {
+// MARK: - Összesítő Termék Card
+struct OsszesitoTermekCard: View {
     let termek: HianycikkEntity
-    let isSelected: Bool
-    let onToggle: () -> Void
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        Button(action: onToggle) {
-            HStack(spacing: 12) {
-                Image(systemName: isSelected ? "checkmark.square.fill" : "square")
-                    .font(.title3)
-                    .foregroundColor(isSelected ? .lidlBlue : .secondary)
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(termek.cikkszam ?? "N/A")")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.secondary)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("\(termek.cikkszam ?? "N/A") | \(termek.cikkMegnev ?? "Név nélkül")")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(Color.adaptiveText(colorScheme: colorScheme))
+                Text(termek.cikkMegnev ?? "Név nélkül")
+                    .font(.subheadline)
+                    .foregroundColor(Color.adaptiveText(colorScheme: colorScheme))
+                    .lineLimit(2)
 
-                    Text("Mennyiség: \(termek.rendeltMennyiseg) db")
-                        .font(.caption)
+                if let hianyKezdete = termek.hianyKezdete {
+                    Text("Hiány: \(formattedDate(hianyKezdete))")
+                        .font(.caption2)
                         .foregroundColor(.secondary)
                 }
-
-                Spacer()
             }
-            .padding()
-            .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
-            .cornerRadius(8)
+
+            Spacer()
         }
-        .buttonStyle(PlainButtonStyle())
+        .padding(12)
+        .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
+        .cornerRadius(8)
+    }
+
+    private func formattedDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "hu_HU")
+        formatter.dateFormat = "MM.dd"
+        return formatter.string(from: date)
     }
 }

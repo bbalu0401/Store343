@@ -98,11 +98,7 @@ struct HianycikkekView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     // Statisztika Card
-                    StatisztikaCard(
-                        osszesen: osszesHianycikk,
-                        rendelesreVar: rendelesreVarCount,
-                        uj: ujCount
-                    )
+                    StatisztikaCard(osszesen: osszesHianycikk)
 
                     // Kategória kártyák
                     ForEach(HianycikkKategoria.allCases) { kategoria in
@@ -145,14 +141,6 @@ struct HianycikkekView: View {
         hianycikkek.count
     }
 
-    private var rendelesreVarCount: Int {
-        hianycikkek.filter { $0.statusz == HianycikkStatusz.rendelesreVar.rawValue }.count
-    }
-
-    private var ujCount: Int {
-        hianycikkek.filter { $0.statusz == HianycikkStatusz.uj.rawValue }.count
-    }
-
     private func getCountForKategoria(_ kategoria: HianycikkKategoria) -> Int {
         hianycikkek.filter { $0.kategoria == kategoria.rawValue }.count
     }
@@ -163,7 +151,8 @@ struct HianycikkekView: View {
         for hianycikk in hianycikkek {
             hianycikk.lezarva = true
             hianycikk.lezarasDatuma = Date()
-            hianycikk.statusz = HianycikkStatusz.lezarva.rawValue
+            hianycikk.statusz = HianycikkStatusz.megszuntetve.rawValue
+            hianycikk.modositva = Date()
         }
 
         // Mentés
@@ -178,8 +167,6 @@ struct HianycikkekView: View {
 // MARK: - Statisztika Card
 struct StatisztikaCard: View {
     let osszesen: Int
-    let rendelesreVar: Int
-    let uj: Int
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
@@ -191,17 +178,15 @@ struct StatisztikaCard: View {
             Divider()
 
             HStack(spacing: 20) {
-                StatItem(emoji: "🔴", text: "\(osszesen) hiánycikk összesen")
-                Spacer()
-            }
-
-            HStack(spacing: 20) {
-                StatItem(emoji: "🟡", text: "\(rendelesreVar) rendelésre vár")
-                Spacer()
-            }
-
-            HStack(spacing: 20) {
-                StatItem(emoji: "🟢", text: "\(uj) még nem kezelt")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Összes hiánycikk:")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Text("\(osszesen) termék")
+                        .font(.title3)
+                        .fontWeight(.bold)
+                        .foregroundColor(Color.adaptiveText(colorScheme: colorScheme))
+                }
                 Spacer()
             }
         }
@@ -209,22 +194,6 @@ struct StatisztikaCard: View {
         .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
         .cornerRadius(16)
         .shadow(color: Color.black.opacity(0.1), radius: 5, y: 2)
-    }
-}
-
-struct StatItem: View {
-    let emoji: String
-    let text: String
-    @Environment(\.colorScheme) var colorScheme
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Text(emoji)
-                .font(.title3)
-            Text(text)
-                .font(.subheadline)
-                .foregroundColor(Color.adaptiveText(colorScheme: colorScheme))
-        }
     }
 }
 
