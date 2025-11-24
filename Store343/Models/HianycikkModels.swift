@@ -124,9 +124,7 @@ public enum HianycikkStatusz: String, CaseIterable, Identifiable {
 }
 
 // MARK: - HianycikkEntity Extension
-extension HianycikkEntity: Identifiable {
-    // id property already exists in CoreData entity as UUID
-}
+// Note: HianycikkEntity automatically conforms to Identifiable via CoreData's @NSManaged id property
 
 public extension HianycikkEntity {
     var kategoriaEnum: HianycikkKategoria? {
