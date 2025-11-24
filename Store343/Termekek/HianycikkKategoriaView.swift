@@ -210,13 +210,8 @@ struct TermekCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Header with checkbox and name
+            // Header with name
             HStack(alignment: .top, spacing: 12) {
-                // Checkbox placeholder (will be used in rendelési lista)
-                Image(systemName: termek.statusz == HianycikkStatusz.rendelesreVar.rawValue ? "checkmark.square.fill" : "square")
-                    .font(.title3)
-                    .foregroundColor(termek.statusz == HianycikkStatusz.rendelesreVar.rawValue ? .lidlBlue : .secondary)
-
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(termek.cikkszam ?? "N/A") | \(termek.cikkMegnev ?? "Név nélkül")")
                         .font(.headline)

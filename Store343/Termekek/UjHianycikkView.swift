@@ -270,3 +270,31 @@ struct UjHianycikkView: View {
         }
     }
 }
+
+// MARK: - Section Card Component
+struct SectionCard<Content: View>: View {
+    let title: String
+    let content: Content
+    @Environment(\.colorScheme) var colorScheme
+
+    init(title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.headline)
+                .foregroundColor(Color.adaptiveText(colorScheme: colorScheme))
+
+            Divider()
+
+            content
+        }
+        .padding()
+        .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.1), radius: 5, y: 2)
+    }
+}
