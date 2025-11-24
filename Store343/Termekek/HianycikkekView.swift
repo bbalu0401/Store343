@@ -18,6 +18,7 @@ struct HianycikkekView: View {
     @State private var selectedKategoria: HianycikkKategoria? = nil
     @State private var showUjHianycikk = false
     @State private var showRendelesiLista = false
+    @State private var showNapValtasAlert = false
 
     var body: some View {
         NavigationStack {
@@ -37,6 +38,14 @@ struct HianycikkekView: View {
             }
             .sheet(isPresented: $showRendelesiLista) {
                 RendelesiListaView()
+            }
+            .alert("Nap váltás", isPresented: $showNapValtasAlert) {
+                Button("Mégse", role: .cancel) { }
+                Button("Új napot indítok", role: .destructive) {
+                    ujNapotIndit()
+                }
+            } message: {
+                Text("Ez lezárja az összes aktív hiánycikket és tiszta lappal indítasz. Biztosan folytatod?")
             }
         }
     }
@@ -64,11 +73,19 @@ struct HianycikkekView: View {
                 Spacer()
 
                 Button(action: {
+                    showNapValtasAlert = true
+                }) {
+                    Image(systemName: "calendar.badge.clock")
+                        .foregroundColor(.lidlBlue)
+                }
+
+                Button(action: {
                     showRendelesiLista = true
                 }) {
                     Image(systemName: "list.clipboard")
                         .foregroundColor(.lidlBlue)
                 }
+                .padding(.leading, 12)
             }
             .padding()
             .background(Color.adaptiveBackground(colorScheme: colorScheme))
@@ -138,6 +155,23 @@ struct HianycikkekView: View {
 
     private func getCountForKategoria(_ kategoria: HianycikkKategoria) -> Int {
         hianycikkek.filter { $0.kategoria == kategoria.rawValue }.count
+    }
+
+    // MARK: - Actions
+    private func ujNapotIndit() {
+        // Lezárja az összes aktív hiánycikket
+        for hianycikk in hianycikkek {
+            hianycikk.lezarva = true
+            hianycikk.lezarasDatuma = Date()
+            hianycikk.statusz = HianycikkStatusz.lezarva.rawValue
+        }
+
+        // Mentés
+        do {
+            try viewContext.save()
+        } catch {
+            print("Hiba a nap váltás során: \(error)")
+        }
     }
 }
 

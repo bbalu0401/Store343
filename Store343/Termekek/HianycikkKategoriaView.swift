@@ -112,6 +112,13 @@ struct HianycikkKategoriaView: View {
                                     selectedTermek = termek
                                     showReszletek = true
                                 }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        torolTermek(termek)
+                                    } label: {
+                                        Label("Törlés", systemImage: "trash.fill")
+                                    }
+                                }
                         }
                     }
                     .padding()
@@ -153,6 +160,21 @@ struct HianycikkKategoriaView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
+    }
+
+    // MARK: - Actions
+    private func torolTermek(_ termek: HianycikkEntity) {
+        // Lezárja a hiánycikket
+        termek.lezarva = true
+        termek.lezarasDatuma = Date()
+        termek.statusz = HianycikkStatusz.lezarva.rawValue
+
+        // Mentés
+        do {
+            try viewContext.save()
+        } catch {
+            print("Hiba a termék törlése során: \(error)")
+        }
     }
 }
 
