@@ -11,13 +11,7 @@ struct UjHianycikkView: View {
 
     @State private var cikkszam: String = ""
     @State private var cikkMegnev: String = ""
-    @State private var vonalkod: String = ""
     @State private var selectedKategoria: HianycikkKategoria = .troso
-    @State private var selectedPrioritas: HianycikkPrioritas = .normal
-    @State private var jegyzetek: String = ""
-    @State private var elviKeszlet: String = "0"
-    @State private var raktarKeszlet: String = "0"
-    @State private var minKeszlet: String = "5"
 
     @State private var showAlert = false
     @State private var alertMessage = ""
@@ -33,31 +27,28 @@ struct UjHianycikkView: View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 20) {
-                    // 1️⃣ Termék keresése
-                    SectionCard(title: "1️⃣  Termék keresése") {
+                    // OCR Button
+                    Button(action: {
+                        showSourceSelector = true
+                    }) {
+                        HStack {
+                            Image(systemName: "camera.fill")
+                            Text("📸 Ártábla fotózása (OCR)")
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.lidlYellow)
+                        .cornerRadius(12)
+                    }
+
+                    // Termék adatok
+                    SectionCard(title: "Termék adatok") {
                         VStack(spacing: 16) {
-                            // OCR Button
-                            Button(action: {
-                                showSourceSelector = true
-                            }) {
-                                HStack {
-                                    Image(systemName: "camera.fill")
-                                    Text("📸 Ártábla fotózása (OCR)")
-                                        .fontWeight(.semibold)
-                                }
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.lidlYellow)
-                                .cornerRadius(12)
-                            }
-
-                            Divider()
-                                .padding(.vertical, 4)
-
                             // Cikkszám
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("🔍 Cikkszám vagy vonalkód")
+                                Text("Cikkszám")
                                     .font(.subheadline)
                                     .fontWeight(.semibold)
                                     .foregroundColor(Color.adaptiveText(colorScheme: colorScheme))
@@ -67,36 +58,21 @@ struct UjHianycikkView: View {
                                     .keyboardType(.numberPad)
                             }
 
-                            Text("vagy")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-
                             // Megnevezés
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("🔍 Név szerinti keresés")
+                                Text("Termék megnevezése")
                                     .font(.subheadline)
                                     .fontWeight(.semibold)
                                     .foregroundColor(Color.adaptiveText(colorScheme: colorScheme))
 
-                                TextField("Termék megnevezése", text: $cikkMegnev)
+                                TextField("Termék neve", text: $cikkMegnev)
                                     .textFieldStyle(RoundedBorderTextFieldStyle())
-                            }
-
-                            // Vonalkód (optional)
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Vonalkód (opcionális)")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-
-                                TextField("Vonalkód", text: $vonalkod)
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                                    .keyboardType(.numberPad)
                             }
                         }
                     }
 
-                    // 2️⃣ Kategória kiválasztása
-                    SectionCard(title: "2️⃣  Kategória kiválasztása") {
+                    // Kategória kiválasztása
+                    SectionCard(title: "Kategória") {
                         VStack(spacing: 12) {
                             ForEach(HianycikkKategoria.allCases) { kategoria in
                                 Button(action: {
@@ -113,75 +89,6 @@ struct UjHianycikkView: View {
                                     .padding(.vertical, 4)
                                 }
                             }
-                        }
-                    }
-
-                    // 3️⃣ Prioritás
-                    SectionCard(title: "3️⃣  Prioritás") {
-                        VStack(spacing: 12) {
-                            ForEach(HianycikkPrioritas.allCases) { prioritas in
-                                Button(action: {
-                                    selectedPrioritas = prioritas
-                                }) {
-                                    HStack {
-                                        Image(systemName: selectedPrioritas == prioritas ? "largecircle.fill.circle" : "circle")
-                                        Text(prioritas.displayName)
-                                            .foregroundColor(Color.adaptiveText(colorScheme: colorScheme))
-                                        Spacer()
-                                    }
-                                    .padding(.vertical, 4)
-                                }
-                            }
-                        }
-                    }
-
-                    // 4️⃣ Készlet információk
-                    SectionCard(title: "4️⃣  Készlet információk") {
-                        VStack(spacing: 12) {
-                            // Elvi készlet
-                            HStack {
-                                Text("Elvi készlet:")
-                                    .frame(width: 120, alignment: .leading)
-                                TextField("0", text: $elviKeszlet)
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                                    .keyboardType(.numberPad)
-                                Text("db")
-                            }
-
-                            // Raktár készlet
-                            HStack {
-                                Text("Raktár készlet:")
-                                    .frame(width: 120, alignment: .leading)
-                                TextField("0", text: $raktarKeszlet)
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                                    .keyboardType(.numberPad)
-                                Text("db")
-                            }
-
-                            // Min. készlet
-                            HStack {
-                                Text("Min. készlet:")
-                                    .frame(width: 120, alignment: .leading)
-                                TextField("5", text: $minKeszlet)
-                                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                                    .keyboardType(.numberPad)
-                                Text("db")
-                            }
-                        }
-                    }
-
-                    // 5️⃣ Jegyzetek (opcionális)
-                    SectionCard(title: "5️⃣  Jegyzetek (opcionális)") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            TextEditor(text: $jegyzetek)
-                                .frame(height: 100)
-                                .padding(8)
-                                .background(Color.adaptiveBackground(colorScheme: colorScheme))
-                                .cornerRadius(8)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                                )
                         }
                     }
 
@@ -292,14 +199,12 @@ struct UjHianycikkView: View {
         ujHianycikk.id = UUID()
         ujHianycikk.cikkszam = cikkszam.isEmpty ? nil : cikkszam
         ujHianycikk.cikkMegnev = cikkMegnev.isEmpty ? nil : cikkMegnev
-        ujHianycikk.vonalkod = vonalkod.isEmpty ? nil : vonalkod
         ujHianycikk.kategoria = selectedKategoria.rawValue
-        ujHianycikk.prioritas = selectedPrioritas.rawValue
+        ujHianycikk.prioritas = HianycikkPrioritas.normal.rawValue
         ujHianycikk.statusz = HianycikkStatusz.uj.rawValue
-        ujHianycikk.jegyzetek = jegyzetek.isEmpty ? nil : jegyzetek
-        ujHianycikk.elviKeszlet = Int16(elviKeszlet) ?? 0
-        ujHianycikk.raktarKeszlet = Int16(raktarKeszlet) ?? 0
-        ujHianycikk.minKeszlet = Int16(minKeszlet) ?? 5
+        ujHianycikk.elviKeszlet = 0
+        ujHianycikk.raktarKeszlet = 0
+        ujHianycikk.minKeszlet = 0
         ujHianycikk.hianyKezdete = Date()
         ujHianycikk.lezarva = false
         ujHianycikk.letrehozva = Date()
