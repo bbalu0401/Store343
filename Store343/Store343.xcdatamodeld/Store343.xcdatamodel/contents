@@ -51,4 +51,25 @@
         <attribute name="talalasok" optional="YES" attributeType="String"/>
         <relationship name="bizonylat" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NfBizonylat" inverseName="termekekRelation" inverseEntity="NfBizonylat"/>
     </entity>
+    <entity name="HianycikkEntity" representedClassName="HianycikkEntity" syncable="YES" codeGenerationType="class">
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="cikkszam" optional="YES" attributeType="String"/>
+        <attribute name="cikkMegnev" optional="YES" attributeType="String"/>
+        <attribute name="vonalkod" optional="YES" attributeType="String"/>
+        <attribute name="kategoria" optional="YES" attributeType="String"/>
+        <attribute name="elviKeszlet" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="raktarKeszlet" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="minKeszlet" attributeType="Integer 16" defaultValueString="5" usesScalarValueType="YES"/>
+        <attribute name="hianyKezdete" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="prioritas" optional="YES" attributeType="String"/>
+        <attribute name="statusz" optional="YES" attributeType="String"/>
+        <attribute name="jegyzetek" optional="YES" attributeType="String"/>
+        <attribute name="rendeltMennyiseg" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="szallito" optional="YES" attributeType="String"/>
+        <attribute name="becsultErkezes" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="lezarva" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="lezarasDatuma" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="letrehozva" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="modositva" attributeType="Date" usesScalarValueType="NO"/>
+    </entity>
 </model>
