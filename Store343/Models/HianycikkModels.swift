@@ -84,6 +84,7 @@ public enum HianycikkPrioritas: String, CaseIterable, Identifiable {
 
 // MARK: - Státusz Enum
 public enum HianycikkStatusz: String, CaseIterable, Identifiable {
+    case varFeldolgozasra = "var_feldolgozasra"
     case ujMaiBeérkezés = "uj_mai_beerkezes"
     case holnapiBeerkezes = "holnapi_beerkezes"
     case rosszKeszlet = "rossz_keszlet"
@@ -96,6 +97,7 @@ public enum HianycikkStatusz: String, CaseIterable, Identifiable {
 
     public var displayName: String {
         switch self {
+        case .varFeldolgozasra: return "Vár feldolgozásra"
         case .ujMaiBeérkezés: return "Új mai beérkezés"
         case .holnapiBeerkezes: return "Holnapi beérkezés"
         case .rosszKeszlet: return "Rossz készlet"
@@ -108,6 +110,7 @@ public enum HianycikkStatusz: String, CaseIterable, Identifiable {
 
     public var emoji: String {
         switch self {
+        case .varFeldolgozasra: return "⏳"
         case .ujMaiBeérkezés: return "✅"
         case .holnapiBeerkezes: return "📅"
         case .rosszKeszlet: return "❌"
@@ -120,6 +123,7 @@ public enum HianycikkStatusz: String, CaseIterable, Identifiable {
 
     public var color: Color {
         switch self {
+        case .varFeldolgozasra: return .yellow
         case .ujMaiBeérkezés: return .green
         case .holnapiBeerkezes: return .blue
         case .rosszKeszlet: return .red
@@ -127,6 +131,17 @@ public enum HianycikkStatusz: String, CaseIterable, Identifiable {
         case .kozpontiHianycikk: return .orange
         case .maradekAru: return .brown
         case .megszuntetve: return .gray
+        }
+    }
+
+    public var isFeldolgozva: Bool {
+        switch self {
+        case .varFeldolgozasra:
+            return false
+        case .megszuntetve:
+            return false
+        default:
+            return true
         }
     }
 }

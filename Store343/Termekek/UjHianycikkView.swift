@@ -214,7 +214,7 @@ struct UjHianycikkView: View {
         ujHianycikk.cikkMegnev = cikkMegnev.isEmpty ? nil : cikkMegnev
         ujHianycikk.kategoria = selectedKategoria.rawValue
         ujHianycikk.prioritas = HianycikkPrioritas.normal.rawValue
-        ujHianycikk.statusz = HianycikkStatusz.ujMaiBeérkezés.rawValue
+        ujHianycikk.statusz = HianycikkStatusz.varFeldolgozasra.rawValue
         ujHianycikk.elviKeszlet = 0
         ujHianycikk.raktarKeszlet = 0
         ujHianycikk.minKeszlet = 0

@@ -98,7 +98,11 @@ struct HianycikkekView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     // Statisztika Card
-                    StatisztikaCard(osszesen: osszesHianycikk)
+                    StatisztikaCard(
+                        osszesen: osszesHianycikk,
+                        varFeldolgozasra: varFeldolgozasra,
+                        feldolgozva: feldolgozva
+                    )
 
                     // Kategória kártyák
                     ForEach(HianycikkKategoria.allCases) { kategoria in
@@ -141,6 +145,20 @@ struct HianycikkekView: View {
         hianycikkek.count
     }
 
+    private var varFeldolgozasra: Int {
+        hianycikkek.filter { $0.statusz == HianycikkStatusz.varFeldolgozasra.rawValue }.count
+    }
+
+    private var feldolgozva: Int {
+        hianycikkek.filter { item in
+            guard let statusz = item.statusz,
+                  let statuszEnum = HianycikkStatusz(rawValue: statusz) else {
+                return false
+            }
+            return statuszEnum.isFeldolgozva
+        }.count
+    }
+
     private func getCountForKategoria(_ kategoria: HianycikkKategoria) -> Int {
         hianycikkek.filter { $0.kategoria == kategoria.rawValue }.count
     }
@@ -167,27 +185,61 @@ struct HianycikkekView: View {
 // MARK: - Statisztika Card
 struct StatisztikaCard: View {
     let osszesen: Int
+    let varFeldolgozasra: Int
+    let feldolgozva: Int
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("📊 Statisztika")
+            Text("📊 Összesítés")
                 .font(.headline)
                 .foregroundColor(Color.adaptiveText(colorScheme: colorScheme))
 
             Divider()
 
-            HStack(spacing: 20) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Összes hiánycikk:")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    Text("\(osszesen) termék")
-                        .font(.title3)
+            HStack(spacing: 16) {
+                // Total
+                VStack(alignment: .center, spacing: 4) {
+                    Text("\(osszesen)")
+                        .font(.title2)
                         .fontWeight(.bold)
                         .foregroundColor(Color.adaptiveText(colorScheme: colorScheme))
+                    Text("Összesen")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
-                Spacer()
+                .frame(maxWidth: .infinity)
+
+                Divider()
+                    .frame(height: 40)
+
+                // Waiting for processing
+                VStack(alignment: .center, spacing: 4) {
+                    Text("\(varFeldolgozasra)")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.yellow)
+                    Text("Vár feldolgozásra")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+
+                Divider()
+                    .frame(height: 40)
+
+                // Processed
+                VStack(alignment: .center, spacing: 4) {
+                    Text("\(feldolgozva)")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.green)
+                    Text("Feldolgozva")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
             }
         }
         .padding()
