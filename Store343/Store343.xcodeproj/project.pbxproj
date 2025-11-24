@@ -39,7 +39,12 @@
 		491F8B59258C46F288165E76 /* NapiInfoModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5E8AC18E241454886AB7C68 /* NapiInfoModels.swift */; };
 		E1968FBC54C747188153061A /* NfModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E7C172DE95447029EFCF5A7 /* NfModels.swift */; };
 		F86263F58D594BB98D6F930E /* NfBizonylatDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F048A20F427F428AAC5A72D0 /* NfBizonylatDetailView.swift */; };
-/* End PBXBuildFile section */
+		15656E3993C44C3D84708A55 /* HianycikkModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49797A3C04A14BB9B37B2993 /* HianycikkModels.swift */; };
+		E90DC9CFAF75460885149E82 /* HianycikkKategoriaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B1420D7492E4FA49F486AC1 /* HianycikkKategoriaView.swift */; };
+		A972E25493684452A3E53158 /* HianycikkReszletekView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D93B3CCB30B49849AB713F5 /* HianycikkReszletekView.swift */; };
+		1E795BA0F97F4FDB812A451F /* UjHianycikkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FA57120A95545F89A0C0513 /* UjHianycikkView.swift */; };
+		95B867C46BA647B581E1C70A /* RendelesiListaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE8EAF4566E348829E080CA2 /* RendelesiListaView.swift */; };
+		/* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		BA3339AB2EBF98450012B6AA /* Store343.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Store343.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -75,7 +80,12 @@
 		D5E8AC18E241454886AB7C68 /* NapiInfoModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NapiInfoModels.swift; sourceTree = "<group>"; };
 		3E7C172DE95447029EFCF5A7 /* NfModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NfModels.swift; sourceTree = "<group>"; };
 		F048A20F427F428AAC5A72D0 /* NfBizonylatDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NfBizonylatDetailView.swift; sourceTree = "<group>"; };
-/* End PBXFileReference section */
+		49797A3C04A14BB9B37B2993 /* HianycikkModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HianycikkModels.swift; sourceTree = "<group>"; };
+		2B1420D7492E4FA49F486AC1 /* HianycikkKategoriaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HianycikkKategoriaView.swift; sourceTree = "<group>"; };
+		5D93B3CCB30B49849AB713F5 /* HianycikkReszletekView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HianycikkReszletekView.swift; sourceTree = "<group>"; };
+		5FA57120A95545F89A0C0513 /* UjHianycikkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UjHianycikkView.swift; sourceTree = "<group>"; };
+		BE8EAF4566E348829E080CA2 /* RendelesiListaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RendelesiListaView.swift; sourceTree = "<group>"; };
+		/* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		BA333A042EBFCABC0012B6AA /* Store343 */ = {
@@ -117,7 +127,8 @@
 				BA3339FD2EBFCA710012B6AA /* ColorTheme.swift */,
 				D5E8AC18E241454886AB7C68 /* NapiInfoModels.swift */,
 				3E7C172DE95447029EFCF5A7 /* NfModels.swift */,
-			);
+			
+				49797A3C04A14BB9B37B2993 /* HianycikkModels.swift */,);
 			path = Models;
 			sourceTree = "<group>";
 		};
@@ -194,7 +205,11 @@
 				BA333A3C2EBFD02B0012B6AA /* NfTermekListView.swift */,
 				BA333A3E2EBFD02D0012B6AA /* NfOCRProcessView.swift */,
 				F048A20F427F428AAC5A72D0 /* NfBizonylatDetailView.swift */,
-			);
+			
+				2B1420D7492E4FA49F486AC1 /* HianycikkKategoriaView.swift */,
+				5D93B3CCB30B49849AB713F5 /* HianycikkReszletekView.swift */,
+				5FA57120A95545F89A0C0513 /* UjHianycikkView.swift */,
+				BE8EAF4566E348829E080CA2 /* RendelesiListaView.swift */,);
 			path = Termekek;
 			sourceTree = "<group>";
 		};
@@ -314,7 +329,12 @@
 				2F9673CE234C466BA1631263 /* DocumentPicker.swift in Sources */,
 				491F8B59258C46F288165E76 /* NapiInfoModels.swift in Sources */,
 				E1968FBC54C747188153061A /* NfModels.swift in Sources */,
-			);
+			
+				15656E3993C44C3D84708A55 /* HianycikkModels.swift in Sources */,
+				E90DC9CFAF75460885149E82 /* HianycikkKategoriaView.swift in Sources */,
+				A972E25493684452A3E53158 /* HianycikkReszletekView.swift in Sources */,
+				1E795BA0F97F4FDB812A451F /* UjHianycikkView.swift in Sources */,
+				95B867C46BA647B581E1C70A /* RendelesiListaView.swift in Sources */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
