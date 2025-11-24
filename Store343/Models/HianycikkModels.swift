@@ -11,9 +11,9 @@ public enum HianycikkKategoria: String, CaseIterable, Identifiable {
     case tiko = "tiko"
     case bakeoff = "bakeoff"
 
-    var id: String { rawValue }
+    public var id: String { rawValue }
 
-    var displayName: String {
+    public var displayName: String {
         switch self {
         case .troso: return "📦 Troso"
         case .mopro: return "❄️ Mopro"
@@ -22,7 +22,7 @@ public enum HianycikkKategoria: String, CaseIterable, Identifiable {
         }
     }
 
-    var emoji: String {
+    public var emoji: String {
         switch self {
         case .troso: return "📦"
         case .mopro: return "❄️"
@@ -31,7 +31,7 @@ public enum HianycikkKategoria: String, CaseIterable, Identifiable {
         }
     }
 
-    var color: Color {
+    public var color: Color {
         switch self {
         case .troso: return .brown
         case .mopro: return .blue
@@ -47,9 +47,9 @@ public enum HianycikkPrioritas: String, CaseIterable, Identifiable {
     case normal = "normal"
     case alacsony = "alacsony"
 
-    var id: String { rawValue }
+    public var id: String { rawValue }
 
-    var displayName: String {
+    public var displayName: String {
         switch self {
         case .surgos: return "🔴 Sürgős"
         case .normal: return "🟡 Normál"
@@ -57,7 +57,7 @@ public enum HianycikkPrioritas: String, CaseIterable, Identifiable {
         }
     }
 
-    var emoji: String {
+    public var emoji: String {
         switch self {
         case .surgos: return "🔴"
         case .normal: return "🟡"
@@ -65,7 +65,7 @@ public enum HianycikkPrioritas: String, CaseIterable, Identifiable {
         }
     }
 
-    var color: Color {
+    public var color: Color {
         switch self {
         case .surgos: return .red
         case .normal: return .orange
@@ -73,7 +73,7 @@ public enum HianycikkPrioritas: String, CaseIterable, Identifiable {
         }
     }
 
-    var sortOrder: Int {
+    public var sortOrder: Int {
         switch self {
         case .surgos: return 1
         case .normal: return 2
@@ -90,9 +90,9 @@ public enum HianycikkStatusz: String, CaseIterable, Identifiable {
     case megerkezett = "megerkezett"
     case lezarva = "lezarva"
 
-    var id: String { rawValue }
+    public var id: String { rawValue }
 
-    var displayName: String {
+    public var displayName: String {
         switch self {
         case .uj: return "🟢 Új"
         case .rendelesreVar: return "🟡 Rendelésre vár"
@@ -102,7 +102,7 @@ public enum HianycikkStatusz: String, CaseIterable, Identifiable {
         }
     }
 
-    var emoji: String {
+    public var emoji: String {
         switch self {
         case .uj: return "🟢"
         case .rendelesreVar: return "🟡"
@@ -112,7 +112,7 @@ public enum HianycikkStatusz: String, CaseIterable, Identifiable {
         }
     }
 
-    var color: Color {
+    public var color: Color {
         switch self {
         case .uj: return .green
         case .rendelesreVar: return .orange
