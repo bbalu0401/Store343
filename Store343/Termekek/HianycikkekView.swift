@@ -72,20 +72,25 @@ struct HianycikkekView: View {
 
                 Spacer()
 
-                Button(action: {
-                    showNapValtasAlert = true
-                }) {
-                    Image(systemName: "calendar.badge.clock")
-                        .foregroundColor(.lidlBlue)
-                }
+                HStack(spacing: 16) {
+                    Button(action: {
+                        showNapValtasAlert = true
+                    }) {
+                        Image(systemName: "calendar.badge.clock")
+                            .font(.system(size: 20))
+                            .foregroundColor(.lidlBlue)
+                            .frame(width: 24, height: 24)
+                    }
 
-                Button(action: {
-                    showRendelesiLista = true
-                }) {
-                    Image(systemName: "list.clipboard")
-                        .foregroundColor(.lidlBlue)
+                    Button(action: {
+                        showRendelesiLista = true
+                    }) {
+                        Image(systemName: "list.clipboard")
+                            .font(.system(size: 20))
+                            .foregroundColor(.lidlBlue)
+                            .frame(width: 24, height: 24)
+                    }
                 }
-                .padding(.leading, 12)
             }
             .padding()
             .background(Color.adaptiveBackground(colorScheme: colorScheme))
