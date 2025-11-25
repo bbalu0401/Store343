@@ -89,58 +89,83 @@ class AppleVisionOCRService {
         }
 
         // Second pass: Find product name
-        // Strategy: Product names are ALWAYS on the LEFT side and are the LARGEST/BOLDEST text
-        // They appear below brand names (like "pick") and are clearly distinguishable by size
+        // Strategy: Product names are usually the LARGEST/BOLDEST text that is NOT a brand name
+        // They can appear anywhere on the label
 
-        var productNameCandidates: [(text: String, height: CGFloat, leftPosition: CGFloat)] = []
+        var productNameCandidates: [(text: String, score: Double, position: CGRect)] = []
 
         for item in textItems {
             let trimmedText = item.text.trimmingCharacters(in: .whitespaces)
 
-            // Skip empty or very short text
-            guard trimmedText.count >= 3 else { continue }
+            // Skip empty or very short text (but allow 2-letter words like brand names)
+            guard trimmedText.count >= 2 else { continue }
 
             // Skip if it's the cikkszám we already found
             if let foundCikkszam = cikkszam, trimmedText.contains(foundCikkszam) {
                 continue
             }
 
-            // Skip common brand names (case-insensitive)
+            // Skip common brand names and generic words (case-insensitive)
             let lowercaseText = trimmedText.lowercased()
-            let brandNames = ["pick", "bio", "organic", "lidl", "combino", "lovilio", "vitasia"]
+            let brandNames = [
+                "kama", "pilos", "mooore", "pick", "dulano", "bio", "organic", "lidl",
+                "combino", "lovilio", "vitasia", "freshona", "mcennedy", "alesto",
+                "freeway", "cien", "w5", "pikok", "solevita", "floralys", "eridanous",
+                "kania"
+            ]
             if brandNames.contains(lowercaseText) {
                 continue
             }
 
-            // Check if mostly letters (product names are text, not numbers)
-            let letterCount = trimmedText.filter { $0.isLetter || $0.isWhitespace || $0 == "," || $0 == "." || $0 == "-" }.count
-            let digitCount = trimmedText.filter { $0.isNumber }.count
+            // Skip descriptions/ingredients (Hungarian specific patterns)
+            let descriptionPatterns = ["val", "vel", "ból", "ből", "ban", "ben", "ról", "ről", "és", "vagy"]
+            var isDescription = false
+            for pattern in descriptionPatterns {
+                if lowercaseText.contains(pattern) && trimmedText.count > 15 {
+                    isDescription = true
+                    break
+                }
+            }
+            if isDescription { continue }
 
-            // Must be mostly text
-            guard letterCount > digitCount && Double(letterCount) / Double(trimmedText.count) > 0.6 else {
+            // Skip weight/measurement indicators and prices
+            if trimmedText.contains("kg") || trimmedText.contains("g") ||
+               trimmedText.contains("ml") || trimmedText.contains("l") ||
+               trimmedText.contains("db") || trimmedText.contains("Ft") ||
+               trimmedText.contains("=") {
                 continue
             }
 
-            // MUST be on the LEFT side (minX < 0.5)
-            let leftPosition = item.position.minX
-            guard leftPosition < 0.5 else { continue }
+            // Check if mostly letters (product names are text, not numbers)
+            // Allow % and other special chars that might be in product names
+            let letterCount = trimmedText.filter { $0.isLetter || $0.isWhitespace || $0 == "," || $0 == "." || $0 == "-" || $0 == "%" }.count
+            let digitCount = trimmedText.filter { $0.isNumber }.count
 
-            // Add to candidates with height and position
-            let height = item.position.height
-            productNameCandidates.append((text: trimmedText, height: height, leftPosition: leftPosition))
-        }
-
-        // Find the text with the LARGEST height that is on the LEFT side
-        // Sort by: 1) height (descending), 2) left position (ascending - prefer more left)
-        productNameCandidates.sort { (a, b) in
-            if abs(a.height - b.height) > 0.005 { // If height difference is significant
-                return a.height > b.height  // Prefer larger/bolder text
-            } else {
-                return a.leftPosition < b.leftPosition  // If similar height, prefer more left
+            // Skip if it looks like a price (mostly numbers)
+            if digitCount > letterCount {
+                continue
             }
+
+            // Must be mostly text, but allow some numbers (like "Tejföl 12%")
+            guard letterCount >= digitCount && Double(letterCount) / Double(trimmedText.count) >= 0.5 else {
+                continue
+            }
+
+            // Calculate score based on: size, confidence, and preferred position
+            // Larger text = higher score, left position = bonus points
+            let sizeScore = Double(item.position.height) * 100.0  // Height is primary factor
+            let confidenceScore = Double(item.confidence) * 10.0  // Confidence matters
+            let positionBonus = item.position.minX < 0.6 ? 5.0 : 0.0  // Slight bonus for left/center, but not required
+
+            let totalScore = sizeScore + confidenceScore + positionBonus
+
+            productNameCandidates.append((text: trimmedText, score: totalScore, position: item.position))
         }
 
-        // Take the best candidate (largest, leftmost text)
+        // Sort by score (highest first)
+        productNameCandidates.sort { $0.score > $1.score }
+
+        // Take the best candidate (highest scoring text)
         if let bestCandidate = productNameCandidates.first {
             cikkMegnev = bestCandidate.text
         }
