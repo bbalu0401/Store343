@@ -135,12 +135,8 @@ struct UjHianycikkView: View {
             }
             .background(Color.adaptiveBackground(colorScheme: colorScheme))
         }
-        .alert("Hiánycikk rögzítése", isPresented: $showAlert) {
-                Button("OK", role: .cancel) {
-                    if alertMessage.contains("Sikeres") {
-                        dismiss()
-                    }
-                }
+        .alert("Hiba", isPresented: $showAlert) {
+                Button("OK", role: .cancel) { }
             } message: {
                 Text(alertMessage)
             }
@@ -227,8 +223,8 @@ struct UjHianycikkView: View {
         // Save
         do {
             try viewContext.save()
-            alertMessage = "Sikeres rögzítés! A hiánycikk hozzáadva."
-            showAlert = true
+            // Sikeres mentés - egyből bezárjuk a nézetet alert nélkül
+            dismiss()
         } catch {
             alertMessage = "Hiba történt a mentés során: \(error.localizedDescription)"
             showAlert = true
