@@ -523,6 +523,210 @@ Important:
             "error": f"{type(e).__name__}: {str(e)}"
         }), 500
 
+@app.route('/api/process-beosztas', methods=['POST'])
+def process_beosztas():
+    """
+    Process weekly employee schedule images with Claude AI OCR
+
+    Request body:
+    {
+        "image_base64": "base64_encoded_image_data",
+        "image_type": "image/jpeg" or "image/png"
+    }
+
+    Response:
+    {
+        "success": true,
+        "employees": [
+            {
+                "name": "Employee name",
+                "shifts": [
+                    {
+                        "date": "10.20",
+                        "day": "H",
+                        "position": "Bolti dolgozó",
+                        "start_time": "21:00",
+                        "end_time": "6:00",
+                        "hours": "8:30",
+                        "details": "Additional details"
+                    }
+                ],
+                "weekly_hours": "42:30"
+            }
+        ],
+        "week_info": {
+            "dates": ["10.20", "10.21", ...],
+            "days": ["H", "K", ...]
+        },
+        "usage": {
+            "input_tokens": 1234,
+            "output_tokens": 567
+        }
+    }
+    """
+    print("📅 [BEOSZTAS] process-beosztas endpoint called")
+
+    try:
+        data = request.get_json()
+
+        # Validate request
+        if not data:
+            return jsonify({
+                "success": False,
+                "error": "Request body is required"
+            }), 400
+
+        if 'image_base64' not in data or 'image_type' not in data:
+            return jsonify({
+                "success": False,
+                "error": "Missing required fields: image_base64, image_type"
+            }), 400
+
+        image_base64 = data['image_base64']
+        image_type = data['image_type']
+
+        print(f"📅 [BEOSZTAS] Image type: {image_type}")
+
+        # Determine media type
+        media_type_map = {
+            "image/jpeg": "image/jpeg",
+            "image/jpg": "image/jpeg",
+            "image/png": "image/png",
+            "image/webp": "image/webp"
+        }
+
+        media_type = media_type_map.get(image_type.lower(), "image/jpeg")
+
+        # Prepare Claude API prompt
+        prompt = """Analyze this weekly employee schedule table carefully.
+
+Extract ALL information in structured JSON format. Be EXTREMELY precise with times and details.
+
+Return this exact JSON structure:
+
+{
+  "week_info": {
+    "dates": ["10.20", "10.21", "10.22", ...],
+    "days": ["H", "K", "Sze", ...]
+  },
+  "employees": [
+    {
+      "name": "Full employee name exactly as shown",
+      "shifts": [
+        {
+          "date": "10.20",
+          "day": "H",
+          "type": "shift" or "rest" or "sick" or "holiday",
+          "position": "Bolti dolgozó" or "Munkaszüneti nap" or "P" or "B" or other position,
+          "start_time": "21:00",
+          "end_time": "06:00",
+          "hours": "8:30",
+          "details": "Kasszás: 5:00-14:00" or other additional details
+        }
+      ],
+      "weekly_hours": "42:30"
+    }
+  ]
+}
+
+IMPORTANT RULES:
+1. Extract EVERY employee visible in the table
+2. Extract ALL dates/days from column headers
+3. For each shift, include ALL details shown:
+   - "P" means pihenőnap (rest day) → type: "rest", position: "P"
+   - "B" means beteg/szabadság (sick/vacation) → type: "sick", position: "B"
+   - "Munkaszüneti nap" means public holiday → type: "holiday", position: "Munkaszüneti nap"
+   - Regular shift → type: "shift", position: actual position name
+4. If a cell shows multiple time segments (e.g., "Bolti dolgozó 5:00-14:00" + "Kasszás: 14:00-21:00"), include the main shift in start_time/end_time and put additional details in the "details" field
+5. Times must be in HH:MM format (e.g., "21:00", "06:00")
+6. If hours are shown (e.g., "8:30"), include them
+7. If weekly hours are shown in the last column, include them
+8. Be extremely careful with employee names - copy them exactly as shown
+
+Return ONLY valid JSON, no markdown formatting, no code blocks."""
+
+        print("📅 [BEOSZTAS] Calling Claude API...")
+
+        # Call Claude API
+        message = client.messages.create(
+            model="claude-sonnet-4-5-20250929",
+            max_tokens=16384,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": media_type,
+                                "data": image_base64
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": prompt
+                        }
+                    ]
+                }
+            ]
+        )
+
+        print("✅ [BEOSZTAS] Claude API call successful!")
+
+        # Extract response text
+        response_text = message.content[0].text
+        print(f"📅 [BEOSZTAS] Response preview: {response_text[:200]}...")
+
+        # Parse JSON response
+        try:
+            # Remove markdown code blocks if present
+            if response_text.strip().startswith("```"):
+                # Extract JSON from markdown code block
+                lines = response_text.strip().split('\n')
+                json_lines = []
+                in_code_block = False
+                for line in lines:
+                    if line.strip().startswith("```"):
+                        in_code_block = not in_code_block
+                        continue
+                    if in_code_block:
+                        json_lines.append(line)
+                response_text = '\n'.join(json_lines)
+
+            schedule_data = json.loads(response_text)
+
+            print(f"✅ [BEOSZTAS] Successfully parsed schedule data")
+            print(f"📅 [BEOSZTAS] Found {len(schedule_data.get('employees', []))} employees")
+
+            return jsonify({
+                "success": True,
+                "week_info": schedule_data.get("week_info", {}),
+                "employees": schedule_data.get("employees", []),
+                "usage": {
+                    "input_tokens": message.usage.input_tokens,
+                    "output_tokens": message.usage.output_tokens
+                }
+            }), 200
+
+        except json.JSONDecodeError as e:
+            print(f"❌ [BEOSZTAS] JSON decode error: {str(e)}")
+            print(f"📅 [BEOSZTAS] Raw response: {response_text}")
+            return jsonify({
+                "success": False,
+                "error": f"Failed to parse AI response as JSON: {str(e)}",
+                "raw_response": response_text
+            }), 500
+
+    except Exception as e:
+        print(f"❌ [BEOSZTAS] Exception: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": f"{type(e).__name__}: {str(e)}"
+        }), 500
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
