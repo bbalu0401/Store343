@@ -219,10 +219,9 @@ struct StatisztikaCard: View {
                         .font(.title2)
                         .fontWeight(.bold)
                         .foregroundColor(.yellow)
-                    Text("Feldolgozásra vár")
+                    Text("Függőben")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity)
 

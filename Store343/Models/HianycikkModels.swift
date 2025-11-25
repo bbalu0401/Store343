@@ -97,7 +97,7 @@ public enum HianycikkStatusz: String, CaseIterable, Identifiable {
 
     public var displayName: String {
         switch self {
-        case .varFeldolgozasra: return "Feldolgozásra vár"
+        case .varFeldolgozasra: return "Függőben"
         case .ujMaiBeérkezés: return "Új mai beérkezés"
         case .holnapiBeerkezes: return "Holnapi beérkezés"
         case .rosszKeszlet: return "Rossz készlet"
