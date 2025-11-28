@@ -129,8 +129,9 @@
 				BA3339FD2EBFCA710012B6AA /* ColorTheme.swift */,
 				D5E8AC18E241454886AB7C68 /* NapiInfoModels.swift */,
 				3E7C172DE95447029EFCF5A7 /* NfModels.swift */,
-			
-				49797A3C04A14BB9B37B2993 /* HianycikkModels.swift */,);
+				49797A3C04A14BB9B37B2993 /* HianycikkModels.swift */,
+				BB2233CC44DD55EE66FF7788 /* BeosztasModels.swift */,
+			);
 			path = Models;
 			sourceTree = "<group>";
 		};
