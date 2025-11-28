@@ -44,6 +44,7 @@
 		E90DC9CFAF75460885149E82 /* HianycikkKategoriaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B1420D7492E4FA49F486AC1 /* HianycikkKategoriaView.swift */; };
 		1E795BA0F97F4FDB812A451F /* UjHianycikkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FA57120A95545F89A0C0513 /* UjHianycikkView.swift */; };
 		95B867C46BA647B581E1C70A /* RendelesiListaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE8EAF4566E348829E080CA2 /* RendelesiListaView.swift */; };
+		AA1122BB33CC44DD55EE6677 /* BeosztasModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2233CC44DD55EE66FF7788 /* BeosztasModels.swift */; };
 		/* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -85,6 +86,7 @@
 		2B1420D7492E4FA49F486AC1 /* HianycikkKategoriaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HianycikkKategoriaView.swift; sourceTree = "<group>"; };
 		5FA57120A95545F89A0C0513 /* UjHianycikkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UjHianycikkView.swift; sourceTree = "<group>"; };
 		BE8EAF4566E348829E080CA2 /* RendelesiListaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RendelesiListaView.swift; sourceTree = "<group>"; };
+		BB2233CC44DD55EE66FF7788 /* BeosztasModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeosztasModels.swift; sourceTree = "<group>"; };
 		/* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -334,7 +336,9 @@
 				15656E3993C44C3D84708A55 /* HianycikkModels.swift in Sources */,
 				E90DC9CFAF75460885149E82 /* HianycikkKategoriaView.swift in Sources */,
 				1E795BA0F97F4FDB812A451F /* UjHianycikkView.swift in Sources */,
-				95B867C46BA647B581E1C70A /* RendelesiListaView.swift in Sources */,);
+				95B867C46BA647B581E1C70A /* RendelesiListaView.swift in Sources */,
+				AA1122BB33CC44DD55EE6677 /* BeosztasModels.swift in Sources */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
