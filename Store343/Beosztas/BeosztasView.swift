@@ -2,6 +2,7 @@
 // Employee scheduling view with daily shift list
 
 import SwiftUI
+import Combine
 
 struct BeosztasView: View {
     @Environment(\.colorScheme) var colorScheme
