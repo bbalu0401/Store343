@@ -7,6 +7,7 @@ import CoreData
 struct HomeView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.managedObjectContext) private var viewContext
+    @Binding var selectedTab: Int
 
     // Fetch all NapiInfos for statistics
     @FetchRequest(
@@ -23,59 +24,47 @@ struct HomeView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                LazyVGrid(columns: columns, spacing: 12) {
-                    // 1. Hero card - Week Status (2 columns wide)
-                    WeekStatusCard(urgentCount: urgentCount, dailyCount: dailyCount)
-                        .gridCellColumns(2)
+                VStack(spacing: 12) {
+                    // 1. Greeting Card (full width)
+                    GreetingCard()
 
-                    // 2. Quick Action cards - Urgent and Daily (1 column each)
-                    QuickActionCard(
-                        title: "Sürgős",
-                        subtitle: "Ma zárásig",
-                        emoji: "🔴",
-                        count: urgentCount,
-                        gradient: [Color(hex: "#dc2626"), Color(hex: "#ef4444")],
-                        action: {
-                            // TODO: Navigate to Infók tab with urgent filter
-                        }
-                    )
+                    // 2. Quick Action cards in HStack - Daily (left) and Urgent (right)
+                    HStack(spacing: 12) {
+                        QuickActionCard(
+                            title: "Napi",
+                            subtitle: "Új információk",
+                            emoji: "🟡",
+                            count: dailyCount,
+                            gradient: [Color(hex: "#f59e0b"), Color(hex: "#fbbf24")],
+                            action: {
+                                selectedTab = 1 // Navigate to Infók tab
+                            }
+                        )
 
-                    QuickActionCard(
-                        title: "Napi",
-                        subtitle: "Új információk",
-                        emoji: "🟡",
-                        count: dailyCount,
-                        gradient: [Color(hex: "#f59e0b"), Color(hex: "#fbbf24")],
-                        action: {
-                            // TODO: Navigate to Infók tab with daily filter
-                        }
-                    )
+                        QuickActionCard(
+                            title: "Sürgős",
+                            subtitle: "Ma zárásig",
+                            emoji: "🔴",
+                            count: urgentCount,
+                            gradient: [Color(hex: "#dc2626"), Color(hex: "#ef4444")],
+                            action: {
+                                selectedTab = 1 // Navigate to Infók tab
+                            }
+                        )
+                    }
 
-                    // 3. Wide card - Beosztás (2 columns wide)
+                    // 3. Heti Info card (full width)
+                    WeeklyInfoCard(weeklyCount: weeklyCount)
+
+                    // 4. Wide card - Beosztás (full width)
                     WideCard(
                         icon: "👥",
                         title: "Beosztás",
                         subtitle: "Csapatod és műszakok",
                         action: {
-                            // TODO: Navigate to Beosztás tab
+                            // TODO: Navigate to Beosztás tab (not implemented yet)
                         }
                     )
-                    .gridCellColumns(2)
-
-                    // 4. Heti Info card (2 columns wide)
-                    WeeklyInfoCard(weeklyCount: weeklyCount)
-                        .gridCellColumns(2)
-
-                    // 5. Wide card - Termékek (2 columns wide)
-                    WideCard(
-                        icon: "📦",
-                        title: "Termékek",
-                        subtitle: "Készlet és árak kezelése",
-                        action: {
-                            // TODO: Navigate to Termékek tab
-                        }
-                    )
-                    .gridCellColumns(2)
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 20)
@@ -135,5 +124,88 @@ struct HomeView: View {
             guard let datum = info.datum else { return false }
             return weekInterval.contains(datum)
         }.count
+    }
+}
+
+// MARK: - Greeting Card Component
+struct GreetingCard: View {
+    @Environment(\.colorScheme) var colorScheme
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                gradient: Gradient(colors: [Color(hex: "#1e70eb"), Color(hex: "#5b9df5")]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .cornerRadius(20)
+
+            VStack(alignment: .leading, spacing: 12) {
+                // Time-based greeting with emoji
+                HStack(spacing: 8) {
+                    Text(getGreetingEmoji())
+                        .font(.system(size: 32))
+                    Text(getGreeting())
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(.white)
+                }
+
+                Spacer().frame(height: 4)
+
+                // Full date
+                Text(getFormattedDate())
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white.opacity(0.9))
+
+                // Week number with Lidl yellow
+                Text(getWeekNumber())
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(Color(hex: "#fef08a"))
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(height: 160)
+        .shadow(color: Color(hex: "#1e70eb").opacity(0.3), radius: 20, y: 10)
+    }
+
+    private func getGreeting() -> String {
+        let hour = Calendar.current.component(.hour, from: Date())
+
+        switch hour {
+        case 0..<8:
+            return "Jó reggelt!"
+        case 8..<18:
+            return "Jó napot!"
+        default:
+            return "Jó estét!"
+        }
+    }
+
+    private func getGreetingEmoji() -> String {
+        let hour = Calendar.current.component(.hour, from: Date())
+
+        switch hour {
+        case 0..<8:
+            return "🌅"
+        case 8..<18:
+            return "☀️"
+        default:
+            return "🌙"
+        }
+    }
+
+    private func getFormattedDate() -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "hu_HU")
+        formatter.dateFormat = "yyyy. MMMM d., EEEE"
+        return formatter.string(from: Date())
+    }
+
+    private func getWeekNumber() -> String {
+        var calendar = Calendar.current
+        calendar.firstWeekday = 2 // Monday
+        let weekNumber = calendar.component(.weekOfYear, from: Date())
+        return "\(weekNumber). hét"
     }
 }

@@ -9,9 +9,11 @@ import anthropic
 import os
 import base64
 import json
+import traceback
 from typing import List, Dict, Any
 from openpyxl import load_workbook
 from io import BytesIO
+import fitz  # PyMuPDF
 
 app = Flask(__name__)
 CORS(app)
@@ -109,61 +111,156 @@ def process_napi_info():
     }
     """
     try:
+        print("📄 [NAPI] process-napi-info endpoint called")
         data = request.get_json()
+        print(f"📄 [NAPI] Request data keys: {list(data.keys()) if data else 'None'}")
 
-        if not data or 'image_base64' not in data:
+        # Accept both 'image_base64' (images) and 'document_base64' (PDFs)
+        image_base64 = data.get('image_base64') or data.get('document_base64')
+        if not image_base64:
+            print("❌ [NAPI] Missing image_base64 or document_base64")
             return jsonify({
                 "success": False,
-                "error": "Missing image_base64 in request"
+                "error": "Missing image_base64 or document_base64 in request"
             }), 400
 
-        image_base64 = data['image_base64']
-        image_type = data.get('image_type', 'image/jpeg')
+        # Accept both 'image_type' and 'document_type'
+        image_type = data.get('image_type') or data.get('document_type', 'image/jpeg')
+        print(f"📄 [NAPI] Document type: {image_type}, base64 length: {len(image_base64)}")
+
+        # Convert PDF to PNG if needed (Claude API only accepts image formats)
+        pdf_pages = []  # Will store base64 PNG images for each page
+        if image_type == 'application/pdf':
+            print("📄 [NAPI] Converting PDF to PNG...")
+            try:
+                # Decode base64 PDF
+                pdf_bytes = base64.b64decode(image_base64)
+
+                # Open PDF with PyMuPDF
+                pdf_document = fitz.open(stream=pdf_bytes, filetype="pdf")
+                print(f"📄 [NAPI] PDF has {len(pdf_document)} pages")
+
+                # Convert ALL pages to PNG
+                for page_num in range(len(pdf_document)):
+                    page = pdf_document[page_num]
+
+                    # Render page to pixmap (image) at 2x resolution for better quality
+                    mat = fitz.Matrix(2.0, 2.0)  # 2x zoom for better OCR
+                    pix = page.get_pixmap(matrix=mat)
+
+                    # Convert pixmap to PNG bytes
+                    png_bytes = pix.tobytes("png")
+
+                    # Encode to base64 and store
+                    page_base64 = base64.b64encode(png_bytes).decode('utf-8')
+                    pdf_pages.append(page_base64)
+
+                    print(f"📄 [NAPI] Page {page_num + 1} converted to PNG, base64 length: {len(page_base64)}")
+
+                pdf_document.close()
+                image_type = 'image/png'
+                print(f"📄 [NAPI] All {len(pdf_pages)} pages converted to PNG")
+            except Exception as e:
+                print(f"❌ [NAPI] PDF conversion error: {str(e)}")
+                traceback.print_exc()
+                return jsonify({
+                    "success": False,
+                    "error": f"Failed to convert PDF: {str(e)}"
+                }), 500
+        else:
+            # For regular images, just use the single image
+            pdf_pages = [image_base64]
 
         # Prepare messages for Claude
-        prompt = """Analyze this Hungarian LIDL daily info document. Extract structured information.
+        prompt = """Analyze this Hungarian LIDL Napi Információ PDF document. Extract ALL topics/sections.
 
-For each distinct topic/section, create a block with:
-1. **tema**: The main topic (e.g., "Árufeltöltés", "Takarítás")
-2. **erintett**: Affected area/department
-3. **tartalom**: Detailed content/description
-4. **hatarido**: Deadline if mentioned (format: "YYYY-MM-DD HH:MM" or null)
-5. **emoji**: One relevant emoji that represents the topic
-6. **checkboxes**: List of actionable tasks/checkboxes
-7. **images**: Always empty array []
+DOCUMENT STRUCTURE:
+- Header: "Napi Információ" + date (e.g., "2025. november 20., csütörtök")
+- Multiple topics, each with:
+  ☑ Checkboxes at top (Info, Feladat, Mindenki, Jelentés, Melléklet)
+  Téma: [topic title]
+  Érintett: [affected people/department]
+  [Content - can include text, tables, product lists]
+  Határidő: [deadline or missing]
 
-Return ONLY valid JSON array of blocks, nothing else:
+FOR EACH TOPIC, EXTRACT:
+{
+  "tema": "exact topic title from 'Téma:' line",
+  "erintett": "exact text from 'Érintett:' line",
+  "tartalom": "full content - preserve lists with bullet points (•), tables with structure",
+  "hatarido": "YYYY-MM-DD HH:MM or null",
+  "emoji": "relevant emoji (🛒📦💰🍺📊🗂️📋📝🧾)",
+  "checkboxes": ["Info", "Feladat", "Mindenki", "Jelentés", "Melléklet"],
+  "images": []
+}
+
+CHECKPOINT EXTRACTION RULES:
+- Look for ☑ checkmarks at the START of each topic
+- Common patterns: "☑ Info ☑ Feladat", "☐ Info ☑ Feladat ☑ Mindenki"
+- Only include checkboxes that have ☑ (checked) mark
+- Empty checkbox ☐ = not included
+
+DEADLINE NORMALIZATION:
+- "ma este zárás" → today at 21:00
+- "hétfő este zárás volt!" → last Monday at 21:00
+- "2025.11.20. (nyitás)" → "2025-11-20 06:00"
+- "2025.11.22. (szombat)" → "2025-11-22 00:00"
+- "vásárnapig" → next Sunday at 00:00
+- If no deadline mentioned → null
+
+CONTENT FORMATTING:
+- Product lists: preserve with bullets "• 4893 Házánk Kincsei Téli szalámi..."
+- Tables: format clearly with line breaks between rows
+- Bizonylat numbers: keep highlighted "86888 visszaküldési bizonylatszámon"
+- Preserve ALL Hungarian text exactly as written
+
+EMOJI SELECTION:
+- "Mopro akciós sarok" → 🛒
+- "visszaküldés" or "szortiment" → 📦
+- "Lidl Plus" or "termékek" or "árak" → 💰
+- "sör" → 🍺
+- "forgalás" → 📊
+- "készletjelentés" or "MOHU" → 🗂️
+- "munkaterv" or "BV" → 📋
+- "bejárás" or "jegyzőkönyv" → 📝
+- "készletszámolás" → 🧾
+
+Return ONLY valid JSON array, no markdown, no explanation:
 [{"tema": "...", "erintett": "...", "tartalom": "...", "hatarido": "...", "emoji": "...", "checkboxes": [...], "images": []}]
 
-Important:
-- Use Hungarian text exactly as written
-- Extract ALL sections/topics
-- If no deadline, use null
-- Each block is a separate topic"""
+CRITICAL: Extract ALL topics from ALL pages of the PDF!"""
 
+        # Build content array with all pages
+        content_items = []
+        for page_num, page_base64 in enumerate(pdf_pages):
+            print(f"📄 [NAPI] Adding page {page_num + 1} to Claude API request")
+            content_items.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": image_type,
+                    "data": page_base64,
+                },
+            })
+
+        # Add prompt at the end
+        content_items.append({
+            "type": "text",
+            "text": prompt
+        })
+
+        print(f"📄 [NAPI] Calling Claude API with {len(pdf_pages)} page(s)...")
         message = client.messages.create(
-            model="claude-3-haiku-20240307",
-            max_tokens=4096,
+            model="claude-sonnet-4-5-20250929",
+            max_tokens=16384,  # Claude Sonnet 4.5 supports up to 64K output tokens
             messages=[
                 {
                     "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": image_type,
-                                "data": image_base64,
-                            },
-                        },
-                        {
-                            "type": "text",
-                            "text": prompt
-                        }
-                    ],
+                    "content": content_items,
                 }
             ],
         )
+        print(f"📄 [NAPI] Claude API response received. Tokens: input={message.usage.input_tokens}, output={message.usage.output_tokens}")
 
         # Extract JSON from response
         response_text = message.content[0].text.strip()
@@ -175,7 +272,9 @@ Important:
                 response_text = response_text[4:]
             response_text = response_text.strip()
 
+        print(f"📄 [NAPI] Parsing JSON response (length: {len(response_text)})")
         blocks = json.loads(response_text)
+        print(f"📄 [NAPI] Successfully parsed {len(blocks)} blocks")
 
         return jsonify({
             "success": True,
@@ -187,14 +286,19 @@ Important:
         }), 200
 
     except json.JSONDecodeError as e:
+        print(f"❌ [NAPI] JSON decode error: {str(e)}")
+        print(f"❌ [NAPI] Response text: {response_text[:500]}")
+        traceback.print_exc()
         return jsonify({
             "success": False,
             "error": f"Failed to parse AI response as JSON: {str(e)}"
         }), 500
     except Exception as e:
+        print(f"❌ [NAPI] Exception: {type(e).__name__}: {str(e)}")
+        traceback.print_exc()
         return jsonify({
             "success": False,
-            "error": str(e)
+            "error": f"{type(e).__name__}: {str(e)}"
         }), 500
 
 @app.route('/api/process-nf-visszakuldes', methods=['POST'])
@@ -327,8 +431,8 @@ Important:
 
         print("🔵 [NF] Calling Claude API...")
         message = client.messages.create(
-            model="claude-3-haiku-20240307",
-            max_tokens=4096,
+            model="claude-sonnet-4-5-20250929",
+            max_tokens=16384,  # Claude Sonnet 4.5 limit (64K available, using 16K for efficiency)
             messages=[
                 {
                     "role": "user",
@@ -368,7 +472,7 @@ Important:
                 print(f"🔵 [NF] Extracted JSON starting at position {bracket_index}")
 
         # Check if response was truncated (hit max_tokens limit)
-        if message.usage.output_tokens >= 4090:  # Close to max_tokens
+        if message.usage.output_tokens >= 16300:  # Close to max_tokens (16384)
             print("⚠️ [NF] Response may be truncated (hit max_tokens limit)")
 
         # Try to fix incomplete JSON if response was truncated
@@ -412,6 +516,210 @@ Important:
         }), 500
     except Exception as e:
         print(f"❌ [NF] Exception: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": f"{type(e).__name__}: {str(e)}"
+        }), 500
+
+@app.route('/api/process-beosztas', methods=['POST'])
+def process_beosztas():
+    """
+    Process weekly employee schedule images with Claude AI OCR
+
+    Request body:
+    {
+        "image_base64": "base64_encoded_image_data",
+        "image_type": "image/jpeg" or "image/png"
+    }
+
+    Response:
+    {
+        "success": true,
+        "employees": [
+            {
+                "name": "Employee name",
+                "shifts": [
+                    {
+                        "date": "10.20",
+                        "day": "H",
+                        "position": "Bolti dolgozó",
+                        "start_time": "21:00",
+                        "end_time": "6:00",
+                        "hours": "8:30",
+                        "details": "Additional details"
+                    }
+                ],
+                "weekly_hours": "42:30"
+            }
+        ],
+        "week_info": {
+            "dates": ["10.20", "10.21", ...],
+            "days": ["H", "K", ...]
+        },
+        "usage": {
+            "input_tokens": 1234,
+            "output_tokens": 567
+        }
+    }
+    """
+    print("📅 [BEOSZTAS] process-beosztas endpoint called")
+
+    try:
+        data = request.get_json()
+
+        # Validate request
+        if not data:
+            return jsonify({
+                "success": False,
+                "error": "Request body is required"
+            }), 400
+
+        if 'image_base64' not in data or 'image_type' not in data:
+            return jsonify({
+                "success": False,
+                "error": "Missing required fields: image_base64, image_type"
+            }), 400
+
+        image_base64 = data['image_base64']
+        image_type = data['image_type']
+
+        print(f"📅 [BEOSZTAS] Image type: {image_type}")
+
+        # Determine media type
+        media_type_map = {
+            "image/jpeg": "image/jpeg",
+            "image/jpg": "image/jpeg",
+            "image/png": "image/png",
+            "image/webp": "image/webp"
+        }
+
+        media_type = media_type_map.get(image_type.lower(), "image/jpeg")
+
+        # Prepare Claude API prompt
+        prompt = """Analyze this weekly employee schedule table carefully.
+
+Extract ALL information in structured JSON format. Be EXTREMELY precise with times and details.
+
+Return this exact JSON structure:
+
+{
+  "week_info": {
+    "dates": ["10.20", "10.21", "10.22", ...],
+    "days": ["H", "K", "Sze", ...]
+  },
+  "employees": [
+    {
+      "name": "Full employee name exactly as shown",
+      "shifts": [
+        {
+          "date": "10.20",
+          "day": "H",
+          "type": "shift" or "rest" or "sick" or "holiday",
+          "position": "Bolti dolgozó" or "Munkaszüneti nap" or "P" or "B" or other position,
+          "start_time": "21:00",
+          "end_time": "06:00",
+          "hours": "8:30",
+          "details": "Kasszás: 5:00-14:00" or other additional details
+        }
+      ],
+      "weekly_hours": "42:30"
+    }
+  ]
+}
+
+IMPORTANT RULES:
+1. Extract EVERY employee visible in the table
+2. Extract ALL dates/days from column headers
+3. For each shift, include ALL details shown:
+   - "P" means pihenőnap (rest day) → type: "rest", position: "P"
+   - "B" means beteg/szabadság (sick/vacation) → type: "sick", position: "B"
+   - "Munkaszüneti nap" means public holiday → type: "holiday", position: "Munkaszüneti nap"
+   - Regular shift → type: "shift", position: actual position name
+4. If a cell shows multiple time segments (e.g., "Bolti dolgozó 5:00-14:00" + "Kasszás: 14:00-21:00"), include the main shift in start_time/end_time and put additional details in the "details" field
+5. Times must be in HH:MM format (e.g., "21:00", "06:00")
+6. If hours are shown (e.g., "8:30"), include them
+7. If weekly hours are shown in the last column, include them
+8. Be extremely careful with employee names - copy them exactly as shown
+
+Return ONLY valid JSON, no markdown formatting, no code blocks."""
+
+        print("📅 [BEOSZTAS] Calling Claude API...")
+
+        # Call Claude API
+        message = client.messages.create(
+            model="claude-sonnet-4-5-20250929",
+            max_tokens=16384,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": media_type,
+                                "data": image_base64
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": prompt
+                        }
+                    ]
+                }
+            ]
+        )
+
+        print("✅ [BEOSZTAS] Claude API call successful!")
+
+        # Extract response text
+        response_text = message.content[0].text
+        print(f"📅 [BEOSZTAS] Response preview: {response_text[:200]}...")
+
+        # Parse JSON response
+        try:
+            # Remove markdown code blocks if present
+            if response_text.strip().startswith("```"):
+                # Extract JSON from markdown code block
+                lines = response_text.strip().split('\n')
+                json_lines = []
+                in_code_block = False
+                for line in lines:
+                    if line.strip().startswith("```"):
+                        in_code_block = not in_code_block
+                        continue
+                    if in_code_block:
+                        json_lines.append(line)
+                response_text = '\n'.join(json_lines)
+
+            schedule_data = json.loads(response_text)
+
+            print(f"✅ [BEOSZTAS] Successfully parsed schedule data")
+            print(f"📅 [BEOSZTAS] Found {len(schedule_data.get('employees', []))} employees")
+
+            return jsonify({
+                "success": True,
+                "week_info": schedule_data.get("week_info", {}),
+                "employees": schedule_data.get("employees", []),
+                "usage": {
+                    "input_tokens": message.usage.input_tokens,
+                    "output_tokens": message.usage.output_tokens
+                }
+            }), 200
+
+        except json.JSONDecodeError as e:
+            print(f"❌ [BEOSZTAS] JSON decode error: {str(e)}")
+            print(f"📅 [BEOSZTAS] Raw response: {response_text}")
+            return jsonify({
+                "success": False,
+                "error": f"Failed to parse AI response as JSON: {str(e)}",
+                "raw_response": response_text
+            }), 500
+
+    except Exception as e:
+        print(f"❌ [BEOSZTAS] Exception: {type(e).__name__}: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({

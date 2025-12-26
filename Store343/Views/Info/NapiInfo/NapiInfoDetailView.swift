@@ -37,20 +37,36 @@ struct NapiInfoDetailView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @State private var showDeleteAlert = false
     @State private var expandedBlockIndex: Int? = nil
+    @State private var blocksCache: [[String: Any]]? = nil
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            // Background - Adaptive (black in dark, white in light)
-            (colorScheme == .dark ? Color.black : Color.white)
-                .ignoresSafeArea()
+        VStack(spacing: 0) {
+            // Navigation bar (ugyanaz mint NF visszaküldésnél)
+            HStack {
+                Button(action: onBack) {
+                    HStack {
+                        Image(systemName: "chevron.left")
+                        Text("Vissza")
+                    }
+                    .foregroundColor(.lidlBlue)
+                }
+                Spacer()
+                Text("Napi Információ")
+                    .font(.headline)
+                Spacer()
+            }
+            .padding()
+            .background(Color.adaptiveBackground(colorScheme: colorScheme))
+            .overlay(Divider().background(Color.secondary.opacity(0.3)), alignment: .bottom)
 
+            // Content ScrollView
             ScrollView {
                 VStack(spacing: 0) {
-                    // MARK: - Header
-                    headerView
+                    // MARK: - Date Header
+                    dateHeaderView
 
                     // MARK: - Statistics Cards
-                    if let blocks = parseInfoBlocks() {
+                    if let blocks = getBlocks() {
                         statisticsView(blocks: blocks)
                             .padding(.horizontal, 16)
                             .padding(.bottom, 20)
@@ -65,6 +81,9 @@ struct NapiInfoDetailView: View {
                                     withAnimation(.easeInOut(duration: 0.3)) {
                                         expandedBlockIndex = (expandedBlockIndex == index) ? nil : index
                                     }
+                                },
+                                onToggleCompleted: {
+                                    toggleCompleted(at: index)
                                 }
                             )
                             .padding(.horizontal, 16)
@@ -79,6 +98,13 @@ struct NapiInfoDetailView: View {
                 }
             }
         }
+        .background(Color.adaptiveBackground(colorScheme: colorScheme))
+        .onAppear {
+            // Initialize cache on appear
+            if blocksCache == nil {
+                blocksCache = parseInfoBlocks()
+            }
+        }
         .alert("Dokumentum törlése", isPresented: $showDeleteAlert) {
             Button("Mégse", role: .cancel) {}
             Button("Törlés", role: .destructive) {
@@ -89,37 +115,47 @@ struct NapiInfoDetailView: View {
         }
     }
 
-    // MARK: - Header View
-    private var headerView: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            // Back button
-            Button(action: onBack) {
-                HStack(spacing: 6) {
-                    Image(systemName: "chevron.left")
-                        .font(.body.weight(.semibold))
-                    Text("Vissza")
-                        .font(.body)
-                }
-                .foregroundColor(Color(hex: "#3B82F6"))
+    // MARK: - Date Header View
+    private var dateHeaderView: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if let datum = info.datum {
+                Text(formatDate(datum))
+                    .font(.system(size: 14))
+                    .foregroundColor(Color(hex: "#94A3B8"))
             }
-            .padding(.leading, 16)
-            .padding(.top, 8)
 
-            // Title and date
-            VStack(alignment: .leading, spacing: 2) {
-                Text(info.fajlnev ?? "napi_info")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
+            // Progress bar
+            if let blocks = getBlocks() {
+                let completed = blocks.filter { ($0["completed"] as? Bool) == true }.count
+                let total = blocks.count
+                let percentage = total > 0 ? Int((Double(completed) / Double(total)) * 100) : 0
 
-                if let datum = info.datum {
-                    Text(formatDate(datum))
-                        .font(.system(size: 14))
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("\(completed)/\(total) (\(percentage)%)")
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(Color(hex: "#94A3B8"))
+
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            // Background track
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color(hex: "#334155").opacity(0.3))
+                                .frame(height: 6)
+
+                            // Progress fill
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.green)
+                                .frame(width: geometry.size.width * CGFloat(percentage) / 100.0, height: 6)
+                        }
+                    }
+                    .frame(height: 6)
                 }
+                .padding(.top, 8)
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 16)
         }
+        .padding(.horizontal, 16)
+        .padding(.top, 16)
+        .padding(.bottom, 16)
     }
 
     // MARK: - Statistics View
@@ -128,7 +164,7 @@ struct NapiInfoDetailView: View {
         let deadline = blocks.filter { getPriority(for: $0) == .deadline }.count
 
         return HStack(spacing: 12) {
-            StatCard(title: "Témák", value: "\(blocks.count)", color: .white)
+            StatCard(title: "Témák", value: "\(blocks.count)", color: .lidlBlue)
             StatCard(title: "Sürgős", value: "\(urgent)", color: Color(hex: "#EF4444"))
             StatCard(title: "Határidős", value: "\(deadline)", color: Color(hex: "#F97316"))
         }
@@ -154,6 +190,11 @@ struct NapiInfoDetailView: View {
     }
 
     // MARK: - Helper Functions
+
+    func getBlocks() -> [[String: Any]]? {
+        // Return cached blocks if available for instant UI updates
+        return blocksCache
+    }
 
     func parseInfoBlocks() -> [[String: Any]]? {
         guard let termekListaJSON = info.termekLista,
@@ -197,6 +238,34 @@ struct NapiInfoDetailView: View {
         try? viewContext.save()
         onBack()
     }
+
+    func toggleCompleted(at index: Int) {
+        // Update cache immediately for instant UI feedback
+        guard var blocks = blocksCache, index < blocks.count else {
+            return
+        }
+
+        let currentStatus = blocks[index]["completed"] as? Bool ?? false
+        blocks[index]["completed"] = !currentStatus
+        blocksCache = blocks
+
+        // Haptic feedback for better UX
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+
+        // Save to database asynchronously (non-blocking)
+        Task {
+            guard let jsonData = try? JSONSerialization.data(withJSONObject: blocks),
+                  let jsonString = String(data: jsonData, encoding: .utf8) else {
+                return
+            }
+
+            await MainActor.run {
+                info.termekLista = jsonString
+                try? viewContext.save()
+            }
+        }
+    }
 }
 
 // MARK: - Stat Card Component
@@ -236,6 +305,7 @@ struct ExpandableTopicCard: View {
     let index: Int
     let isExpanded: Bool
     let onTap: () -> Void
+    let onToggleCompleted: () -> Void
     @Environment(\.colorScheme) var colorScheme
 
     private var priority: InfoPriority {
@@ -254,34 +324,53 @@ struct ExpandableTopicCard: View {
         return .deadline
     }
 
+    private var isCompleted: Bool {
+        return block["completed"] as? Bool ?? false
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header (always visible)
-            Button(action: onTap) {
-                HStack(spacing: 12) {
-                    // Emoji icon
-                    Text(getEmoji())
-                        .font(.system(size: 32))
+            HStack(spacing: 12) {
+                // Emoji icon and title - tappable for expand/collapse
+                Button(action: onTap) {
+                    HStack(spacing: 12) {
+                        // Emoji icon
+                        Text(getEmoji())
+                            .font(.system(size: 32))
 
-                    // Title
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(block["tema"] as? String ?? "")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(colorScheme == .dark ? .white : .black)
-                            .multilineTextAlignment(.leading)
+                        // Title
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(block["tema"] as? String ?? "")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                                .multilineTextAlignment(.leading)
+                                .strikethrough(isCompleted, color: colorScheme == .dark ? .white : .black)
+                        }
                     }
+                }
+                .buttonStyle(PlainButtonStyle())
 
-                    Spacer()
+                Spacer()
 
-                    // Chevron
+                // Checkbox (green when completed)
+                Button(action: onToggleCompleted) {
+                    Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 24))
+                        .foregroundColor(isCompleted ? .green : Color(hex: "#94A3B8"))
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                // Chevron
+                Button(action: onTap) {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(Color(hex: "#94A3B8"))
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
-                .padding(20)
+                .buttonStyle(PlainButtonStyle())
             }
-            .buttonStyle(PlainButtonStyle())
+            .padding(20)
 
             // Badge and metadata (always visible)
             VStack(alignment: .leading, spacing: 12) {
@@ -328,6 +417,26 @@ struct ExpandableTopicCard: View {
                 }
                 .padding(.horizontal, 20)
 
+                // Central checkboxes (read-only indicators)
+                if let checkboxes = block["checkboxes"] as? [String], !checkboxes.isEmpty {
+                    HStack(spacing: 8) {
+                        ForEach(checkboxes, id: \.self) { checkbox in
+                            HStack(spacing: 4) {
+                                Image(systemName: getCheckboxIcon(for: checkbox))
+                                    .font(.system(size: 10))
+                                Text(checkbox)
+                                    .font(.system(size: 11, weight: .medium))
+                            }
+                            .foregroundColor(Color(hex: "#94A3B8"))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color(hex: "#334155").opacity(0.3))
+                            .cornerRadius(6)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
+
                 // Separator + hint
                 if !isExpanded {
                     Divider()
@@ -367,6 +476,7 @@ struct ExpandableTopicCard: View {
         .cornerRadius(16)
         .shadow(color: priority.colors.primary.opacity(0.2), radius: 20, x: 0, y: 10)
         .scaleEffect(isExpanded ? 1.02 : 1.0)
+        .opacity(isCompleted ? 0.6 : 1.0)
         .animation(.easeInOut(duration: 0.3), value: isExpanded)
     }
 
@@ -402,5 +512,22 @@ struct ExpandableTopicCard: View {
         }
 
         return "📋"
+    }
+
+    private func getCheckboxIcon(for checkbox: String) -> String {
+        switch checkbox {
+        case "Info":
+            return "info.circle.fill"
+        case "Feladat":
+            return "checklist"
+        case "Mindenki":
+            return "person.3.fill"
+        case "Jelentés":
+            return "doc.text.fill"
+        case "Melléklet":
+            return "paperclip"
+        default:
+            return "checkmark.circle.fill"
+        }
     }
 }

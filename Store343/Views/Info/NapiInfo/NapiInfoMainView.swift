@@ -3,6 +3,7 @@
 
 import SwiftUI
 import CoreData
+import UniformTypeIdentifiers
 
 struct NapiInfoMainView: View {
     @Binding var selectedInfoType: String?
@@ -16,11 +17,7 @@ struct NapiInfoMainView: View {
     @State private var selectedDate = Date()
     @State private var calendarView: CalendarViewType = .week
     @State private var selectedInfo: NapiInfo? = nil
-    @State private var showImagePicker = false
     @State private var showDocumentPicker = false
-    @State private var showSourceSelector = false
-    @State private var imageSourceType: UIImagePickerController.SourceType = .camera
-    @State private var selectedImage: UIImage? = nil
     @State private var selectedDocumentURL: URL? = nil
     @State private var processingOCR = false
     @State private var selectedInfoForUpload: NapiInfo? = nil
@@ -32,40 +29,40 @@ struct NapiInfoMainView: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Custom Navigation Bar
-            HStack {
-                Button(action: {
-                    selectedInfoType = nil
-                }) {
-                    HStack {
-                        Image(systemName: "chevron.left")
-                        Text("Vissza")
-                    }
-                    .foregroundColor(.lidlBlue)
-                }
-                
-                Spacer()
-                
-                Text("Napi Infó")
-                    .font(.headline)
-                
-                Spacer()
-                
-                Button(action: {}) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.secondary)
-                }
-            }
-            .padding()
-            .background(Color.adaptiveBackground(colorScheme: colorScheme))
-            .overlay(
-                Divider()
-                    .background(Color.secondary.opacity(0.3)),
-                alignment: .bottom
-            )
-            
+        ZStack {
             if selectedInfo == nil {
+                VStack(spacing: 0) {
+                    // Navigation Bar (csak lista nézetben!)
+                    HStack {
+                        Button(action: {
+                            selectedInfoType = nil
+                        }) {
+                            HStack {
+                                Image(systemName: "chevron.left")
+                                Text("Vissza")
+                            }
+                            .foregroundColor(.lidlBlue)
+                        }
+
+                        Spacer()
+
+                        Text("Napi Infó")
+                            .font(.headline)
+
+                        Spacer()
+
+                        Button(action: {}) {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding()
+                    .background(Color.adaptiveBackground(colorScheme: colorScheme))
+                    .overlay(
+                        Divider()
+                            .background(Color.secondary.opacity(0.3)),
+                        alignment: .bottom
+                    )
                 // Date header
                 VStack(alignment: .leading, spacing: 8) {
                     Text(formatDateFull(selectedDate))
@@ -152,9 +149,9 @@ struct NapiInfoMainView: View {
                                 }
                             }) {
                                 NapiInfoListItem(info: info, onAddPhoto: {
-                                    // Add new photo to this document
+                                    // Add new PDF page to this document
                                     selectedInfoForUpload = info
-                                    showSourceSelector = true
+                                    showDocumentPicker = true
                                 })
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -185,11 +182,26 @@ struct NapiInfoMainView: View {
                                     .multilineTextAlignment(.center)
 
                                 Button(action: {
-                                    createNewDocumentForDate(selectedDate)
+                                    // Create new document and show PDF picker directly
+                                    let existingDocs = getInfosForDate(selectedDate)
+                                    if let existingInfo = existingDocs.first {
+                                        selectedInfoForUpload = existingInfo
+                                    } else {
+                                        let newInfo = NapiInfo(context: viewContext)
+                                        newInfo.datum = selectedDate
+                                        newInfo.feldolgozva = false
+                                        newInfo.oldalSzam = 0
+                                        newInfo.tema = nil
+                                        newInfo.erintett = nil
+                                        newInfo.tartalom = nil
+                                        try? viewContext.save()
+                                        selectedInfoForUpload = newInfo
+                                    }
+                                    showDocumentPicker = true
                                 }) {
                                     HStack {
-                                        Image(systemName: "camera.fill")
-                                        Text("Fotó feltöltése")
+                                        Image(systemName: "doc.fill")
+                                        Text("PDF feltöltése")
                                     }
                                     .font(.headline)
                                     .foregroundColor(.white)
@@ -206,53 +218,44 @@ struct NapiInfoMainView: View {
                     }
                     .padding(.bottom, 100)
                 }
-                .background(Color.adaptiveBackground(colorScheme: colorScheme))
                 .gesture(
                     DragGesture(minimumDistance: 50)
                         .onEnded { gesture in
                             handleDaySwipe(gesture)
                         }
                 )
-            } else {
-                // Detail view
-                NapiInfoDetailView(info: selectedInfo!, onBack: {
+                }
+                .background(Color.adaptiveBackground(colorScheme: colorScheme))
+                .navigationBarHidden(true)
+            }
+
+            if let info = selectedInfo {
+                NapiInfoDetailView(info: info, onBack: {
                     selectedInfo = nil
                 })
+                .transition(.move(edge: .trailing))
             }
-        }
-        .background(Color.adaptiveBackground(colorScheme: colorScheme))
-        .navigationBarHidden(true)
-        .confirmationDialog("Napi Infó feltöltése", isPresented: $showSourceSelector, titleVisibility: .visible) {
-            Button("📷 Fotó készítése") {
-                imageSourceType = .camera
-                showImagePicker = true
-            }
-            Button("🖼️ Galéria") {
-                imageSourceType = .photoLibrary
-                showImagePicker = true
-            }
-            Button("📄 PDF/Dokumentum") {
-                showDocumentPicker = true
-            }
-            Button("Mégse", role: .cancel) {}
-        } message: {
-            Text("Válassz forrást")
-        }
-        .sheet(isPresented: $showImagePicker) {
-            ImagePicker(selectedImage: $selectedImage, sourceType: imageSourceType)
         }
         .sheet(isPresented: $showDocumentPicker) {
-            DocumentPicker(selectedDocumentURL: $selectedDocumentURL)
+            DocumentPicker(selectedDocumentURL: $selectedDocumentURL, allowedTypes: [.pdf])
         }
-        .onChange(of: selectedImage) { oldValue, newValue in
-            if let image = newValue, let info = selectedInfoForUpload {
-                processOCR(image: image, for: info)
+        .task(id: selectedDocumentURL) {
+            print("🟢 task(id:) triggered! selectedDocumentURL: \(selectedDocumentURL?.lastPathComponent ?? "nil")")
+            print("🟢 selectedInfoForUpload: \(selectedInfoForUpload != nil ? "exists" : "nil")")
+            print("🟢 showDocumentPicker: \(showDocumentPicker)")
+
+            guard let documentURL = selectedDocumentURL, let info = selectedInfoForUpload else {
+                print("⚠️ Cannot process: documentURL=\(selectedDocumentURL != nil), info=\(selectedInfoForUpload != nil)")
+                return
             }
-        }
-        .onChange(of: selectedDocumentURL) { oldValue, newValue in
-            if let documentURL = newValue, let info = selectedInfoForUpload {
-                processDocument(documentURL: documentURL, for: info)
+
+            print("🟢 Dismissing sheet and calling processDocument...")
+            await MainActor.run {
+                showDocumentPicker = false
             }
+
+            print("🟢 About to call processDocument with file: \(documentURL.lastPathComponent)")
+            processDocument(documentURL: documentURL, for: info)
         }
         .alert("Dokumentum törlése", isPresented: $showDeleteConfirmation) {
             Button("Mégse", role: .cancel) {
@@ -471,7 +474,6 @@ struct NapiInfoMainView: View {
                     try? viewContext.save()
 
                     processingOCR = false
-                    selectedImage = nil
                     selectedInfoForUpload = nil
 
                     // Show detail view after processing
@@ -483,7 +485,6 @@ struct NapiInfoMainView: View {
                 // Handle errors on main thread
                 await MainActor.run {
                     processingOCR = false
-                    selectedImage = nil
                     selectedInfoForUpload = nil
 
                     // Show error to user
@@ -625,14 +626,15 @@ struct NapiInfoMainView: View {
             info.tartalom = firstBlock.tartalom
         }
 
-        // Convert new blocks to JSON format with pageNumber
+        // Convert new blocks to JSON format with pageNumber and completed status
         let newBlocksData: [[String: Any]] = blocks.map { block in
             var dict: [String: Any] = [
                 "tema": block.tema,
                 "erintett": block.erintett,
                 "tartalom": block.tartalom,
                 "index": block.index,
-                "pageNumber": currentPageNumber // NEW: track which page/photo this came from
+                "pageNumber": currentPageNumber, // Track which page/photo this came from
+                "completed": false // Track completion status
             ]
             if let hatarido = block.hatarido {
                 dict["hatarido"] = hatarido
@@ -654,33 +656,6 @@ struct NapiInfoMainView: View {
 
         // Update oldalSzam to reflect total number of pages
         info.oldalSzam = Int16(currentPageNumber)
-    }
-
-    // MARK: - Add Photo to Date (Create or Append to Existing)
-    func createNewDocumentForDate(_ date: Date) {
-        // Check if NapiInfo already exists for this date
-        let existingDocs = getInfosForDate(date)
-
-        if let existingInfo = existingDocs.first {
-            // Use existing NapiInfo (add new page to it)
-            selectedInfoForUpload = existingInfo
-            showSourceSelector = true
-        } else {
-            // Create new NapiInfo (first page)
-            let newInfo = NapiInfo(context: viewContext)
-            newInfo.datum = date
-            newInfo.feldolgozva = false
-            newInfo.oldalSzam = 0 // Will be set to 1 after first photo
-            newInfo.tema = nil
-            newInfo.erintett = nil
-            newInfo.tartalom = nil
-
-            try? viewContext.save()
-
-            // Trigger photo upload
-            selectedInfoForUpload = newInfo
-            showSourceSelector = true
-        }
     }
 
     // MARK: - Delete Info
