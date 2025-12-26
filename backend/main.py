@@ -284,8 +284,7 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
         erintett_match = re.search(r'\bÉrintett:\s*([^\n\r]+)', line, re.IGNORECASE)
         if erintett_match:
             erintett_value = erintett_match.group(1).strip()
-            # Accept any non-empty value that's not explicitly "mindenki"
-            if erintett_value and erintett_value.lower() not in ['mindenki', 'minden']:
+            if erintett_value:
                 current_block['erintett'] = erintett_value
             # Skip this line from content
             continue
