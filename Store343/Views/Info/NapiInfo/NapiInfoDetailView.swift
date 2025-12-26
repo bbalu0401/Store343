@@ -207,13 +207,23 @@ struct NapiInfoDetailView: View {
     }
 
     func getPriority(for block: [String: Any]) -> InfoPriority {
+        // Check surgos flag first
+        if let surgos = block["surgos"] as? Bool, surgos {
+            return .urgent
+        }
+        
         guard let deadline = block["hatarido"] as? String, !deadline.isEmpty else {
             return .info
         }
 
-        // Check if deadline is today
+        // Check if deadline is today or contains urgency keywords
         let today = Calendar.current.startOfDay(for: Date())
-        if deadline.lowercased().contains("ma") || deadline.contains(formatShortDate(today)) {
+        let deadlineLower = deadline.lowercased()
+        if deadlineLower.contains("ma") || 
+           deadlineLower.contains("azonnal") || 
+           deadlineLower.contains("sürgős") ||
+           deadlineLower.contains("este") ||
+           deadline.contains(formatShortDate(today)) {
             return .urgent
         }
 

@@ -19,6 +19,7 @@ struct APIBlock: Codable {
     let erintett: String
     let tartalom: String
     let hatarido: String?
+    let surgos: Bool?
 }
 
 // MARK: - API Service
@@ -78,6 +79,7 @@ class ClaudeAPIService {
                 tema: apiBlock.tema,
                 erintett: apiBlock.erintett,
                 hatarido: apiBlock.hatarido,
+                surgos: apiBlock.surgos ?? false,
                 tartalom: apiBlock.tartalom,
                 termekLista: nil,
                 index: index

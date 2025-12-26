@@ -8,6 +8,7 @@ struct NapiInfoBlock {
     var tema: String
     var erintett: String
     var hatarido: String?
+    var surgos: Bool
     var tartalom: String
     var termekLista: [[String: String]]?
     var index: Int

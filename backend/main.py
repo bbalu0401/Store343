@@ -53,6 +53,7 @@ class NapiInfoBlock(BaseModel):
     erintett: str
     tartalom: str
     hatarido: Optional[str] = None
+    surgos: bool = False
     flags: Optional[dict] = None
     termekek: Optional[List[dict]] = None
     emails: Optional[List[str]] = None
@@ -105,6 +106,9 @@ async def process_napi_info(request: ImageBase64Request):
         if not full_text:
             return NapiInfoResponse(success=False, blocks=[], raw_text="")
         
+        # Fix common Hungarian OCR errors
+        full_text = fix_hungarian_ocr_errors(full_text)
+        
         # Parse document
         document_date, page_number = extract_document_metadata(full_text)
         blocks = parse_napi_info_text(full_text)
@@ -121,6 +125,30 @@ async def process_napi_info(request: ImageBase64Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 # MARK: - Parser Functions
+
+def fix_hungarian_ocr_errors(text: str) -> str:
+    """Fix common Hungarian OCR character errors"""
+    corrections = {
+        'vidé ': 'videó ',
+        'vide ': 'videó ',
+        'hatrid': 'határidő',
+        'Hatrid': 'Határidő',
+        'erintett': 'érintett',
+        'Erintett': 'Érintett',
+        'tema': 'téma',
+        'Tema': 'Téma',
+        'suegos': 'sürgős',
+        'Suegos': 'Sürgős',
+        'feladat': 'feladat',
+        'jelentés': 'jelentés',
+        'cipc': 'cipő',
+        'verseny ': 'verseny ',
+    }
+    
+    for wrong, correct in corrections.items():
+        text = text.replace(wrong, correct)
+    
+    return text
 
 def extract_document_metadata(text: str) -> tuple:
     """Extract date and page number from header"""
@@ -163,6 +191,7 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
                 'erintett': 'Mindenki',
                 'tartalom': '',
                 'hatarido': None,
+                'surgos': False,
                 'flags': {'info': False, 'task': False, 'attachment': False, 'report': False},
                 'termekek': [],
                 'emails': []
@@ -173,15 +202,21 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
         if not current_block:
             continue
         
-        # Check for flags in checkbox lines
-        if '☑' in line or '☐' in line:
-            if 'info' in line_lower:
+        # Check for flags in checkbox lines - handle both checked and unchecked
+        if '☑' in line or '☐' in line or 'info' in line_lower or 'feladat' in line_lower or 'melléklet' in line_lower or 'jelentés' in line_lower:
+            # Info checkbox
+            if 'info' in line_lower and '☑' in line:
                 current_block['flags']['info'] = True
+            # Task checkbox - also mark as urgent
             if 'feladat' in line_lower:
                 current_block['flags']['task'] = True
-            if 'melléklet' in line_lower:
+                if '☑' in line:
+                    current_block['surgos'] = True  # Checked tasks are urgent
+            # Attachment checkbox
+            if 'melléklet' in line_lower and '☑' in line:
                 current_block['flags']['attachment'] = True
-            if 'jelentés' in line_lower:
+            # Report checkbox
+            if 'jelentés' in line_lower and '☑' in line:
                 current_block['flags']['report'] = True
             continue
         
@@ -191,14 +226,26 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
             hatarido_raw = hatarido_match.group(1).strip()
             date_match = re.search(r'(\d{4}\.\d{2}\.\d{2})\.?', hatarido_raw)
             current_block['hatarido'] = date_match.group(1) if date_match else hatarido_raw
+            
+            # Check for urgency keywords in deadline
+            urgency_keywords = ['ma', 'azonnali', 'azonnal', 'sürgős', 'este', 'zárás', 'holnap']
+            if any(keyword in hatarido_raw.lower() for keyword in urgency_keywords):
+                current_block['surgos'] = True
             continue
         
         # Detect "Érintett:"
         erintett_match = re.search(r'\bÉrintett:\s*([^\n\r]+)', line, re.IGNORECASE)
         if erintett_match:
             erintett_value = erintett_match.group(1).strip()
-            if erintett_value and erintett_value.lower() != 'mindenki':
+            # Accept any non-empty value that's not explicitly "mindenki"
+            if erintett_value and erintett_value.lower() not in ['mindenki', 'minden']:
                 current_block['erintett'] = erintett_value
+            continue
+        
+        # Also check for "CSAK" patterns (store-specific targeting)
+        csak_match = re.search(r'\bCSAK\s+([\d,\s]+)', line, re.IGNORECASE)
+        if csak_match:
+            current_block['erintett'] = 'CSAK ' + csak_match.group(1).strip()
             continue
         
         # Skip certain patterns
@@ -213,16 +260,30 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
             else:
                 current_block['tartalom'] = line
             
+            # Check for urgency in content
+            urgency_keywords = ['ma', 'azonnai', 'azonnal', 'sürgős', 'este zárás', 'emlékeztető', 'holnap']
+            if any(keyword in line.lower() for keyword in urgency_keywords):
+                current_block['surgos'] = True
+            
             # Extract date from content if not set
             if not current_block['hatarido']:
+                # Try structured date first
                 dates = re.findall(r'\d{4}\.\d{2}\.\d{2}\.?', line)
                 if dates:
                     current_block['hatarido'] = dates[0].rstrip('.')
+                # Try text-based deadlines
+                elif any(word in line.lower() for word in ['ma', 'holnap', 'este', 'zárás']):
+                    deadline_text = re.search(r'(ma\s+\w+|holnap\s+\w+|este\s+zárás\w*)', line, re.IGNORECASE)
+                    if deadline_text:
+                        current_block['hatarido'] = deadline_text.group(1)
     
     # Add last block
     if current_block and current_block.get('tema'):
         finalize_block(current_block)
-        blocks.append(NapiInfoBlock(**current_block))
+        # Only add if tema is substantial (not just header text)
+        tema_lower = current_block.get('tema', '').lower()
+        if not any(skip in tema_lower for skip in ['napi infó', 'oldal', 'dátum']):
+            blocks.append(NapiInfoBlock(**current_block))
     
     return blocks
 

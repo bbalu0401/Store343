@@ -17,8 +17,9 @@ struct NapiInfoMainView: View {
     @State private var selectedDate = Date()
     @State private var calendarView: CalendarViewType = .week
     @State private var selectedInfo: NapiInfo? = nil
-    @State private var showDocumentPicker = false
-    @State private var selectedDocumentURL: URL? = nil
+    @State private var showImagePicker = false
+    @State private var imagePickerSourceType: UIImagePickerController.SourceType = .photoLibrary
+    @State private var selectedImage: UIImage? = nil
     @State private var processingOCR = false
     @State private var selectedInfoForUpload: NapiInfo? = nil
     @State private var infoToDelete: NapiInfo? = nil
@@ -149,9 +150,9 @@ struct NapiInfoMainView: View {
                                 }
                             }) {
                                 NapiInfoListItem(info: info, onAddPhoto: {
-                                    // Add new PDF page to this document
+                                    // Add new image page to this document
                                     selectedInfoForUpload = info
-                                    showDocumentPicker = true
+                                    showImagePicker = true
                                 })
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -182,7 +183,7 @@ struct NapiInfoMainView: View {
                                     .multilineTextAlignment(.center)
 
                                 Button(action: {
-                                    // Create new document and show PDF picker directly
+                                    // Create new document and show image picker directly
                                     let existingDocs = getInfosForDate(selectedDate)
                                     if let existingInfo = existingDocs.first {
                                         selectedInfoForUpload = existingInfo
@@ -197,11 +198,11 @@ struct NapiInfoMainView: View {
                                         try? viewContext.save()
                                         selectedInfoForUpload = newInfo
                                     }
-                                    showDocumentPicker = true
+                                    showImagePicker = true
                                 }) {
                                     HStack {
-                                        Image(systemName: "doc.fill")
-                                        Text("PDF feltöltése")
+                                        Image(systemName: "photo.fill")
+                                        Text("Fotó feltöltése")
                                     }
                                     .font(.headline)
                                     .foregroundColor(.white)
@@ -236,26 +237,15 @@ struct NapiInfoMainView: View {
                 .transition(.move(edge: .trailing))
             }
         }
-        .sheet(isPresented: $showDocumentPicker) {
-            DocumentPicker(selectedDocumentURL: $selectedDocumentURL, allowedTypes: [.pdf])
+        .sheet(isPresented: $showImagePicker) {
+            ImagePicker(selectedImage: $selectedImage, sourceType: imagePickerSourceType)
         }
-        .task(id: selectedDocumentURL) {
-            print("🟢 task(id:) triggered! selectedDocumentURL: \(selectedDocumentURL?.lastPathComponent ?? "nil")")
-            print("🟢 selectedInfoForUpload: \(selectedInfoForUpload != nil ? "exists" : "nil")")
-            print("🟢 showDocumentPicker: \(showDocumentPicker)")
-
-            guard let documentURL = selectedDocumentURL, let info = selectedInfoForUpload else {
-                print("⚠️ Cannot process: documentURL=\(selectedDocumentURL != nil), info=\(selectedInfoForUpload != nil)")
-                return
-            }
-
-            print("🟢 Dismissing sheet and calling processDocument...")
-            await MainActor.run {
-                showDocumentPicker = false
-            }
-
-            print("🟢 About to call processDocument with file: \(documentURL.lastPathComponent)")
-            processDocument(documentURL: documentURL, for: info)
+        .onChange(of: selectedImage) { newImage in
+            guard let image = newImage, let info = selectedInfoForUpload else { return }
+            
+            showImagePicker = false
+            processImage(image: image, for: info)
+            selectedImage = nil
         }
         .alert("Dokumentum törlése", isPresented: $showDeleteConfirmation) {
             Button("Mégse", role: .cancel) {
@@ -494,19 +484,14 @@ struct NapiInfoMainView: View {
         }
     }
 
-    // MARK: - Document Processing (Claude API)
-    func processDocument(documentURL: URL, for info: NapiInfo) {
+    // MARK: - Image Processing (Google Vision API)
+    func processImage(image: UIImage, for info: NapiInfo) {
         processingOCR = true
 
         Task {
             do {
-                // Convert PDF to image first
-                guard let pdfImage = convertPDFToImage(url: documentURL) else {
-                    throw NSError(domain: "Store343", code: -1, userInfo: [NSLocalizedDescriptionKey: "PDF konverzió sikertelen"])
-                }
-                
-                // Call Claude API for image processing
-                let blocks = try await ClaudeAPIService.shared.processNapiInfo(image: pdfImage)
+                // Call Google Vision API for image processing
+                let blocks = try await ClaudeAPIService.shared.processNapiInfo(image: image)
 
                 // Update UI on main thread
                 await MainActor.run {
@@ -528,11 +513,8 @@ struct NapiInfoMainView: View {
                     try? viewContext.save()
 
                     processingOCR = false
-                    selectedDocumentURL = nil
+                    selectedImage = nil
                     selectedInfoForUpload = nil
-
-                    // Clean up temporary file
-                    try? FileManager.default.removeItem(at: documentURL)
 
                     // Show detail view after processing
                     withAnimation(.easeInOut(duration: 0.3)) {
@@ -543,11 +525,9 @@ struct NapiInfoMainView: View {
                 // Handle errors on main thread
                 await MainActor.run {
                     processingOCR = false
-                    selectedDocumentURL = nil
+                    selectedImage = nil
                     selectedInfoForUpload = nil
 
-                    // Clean up temporary file
-                    try? FileManager.default.removeItem(at: documentURL)
 
                     // Show error to user
                     showErrorAlert(message: error.localizedDescription)
@@ -637,6 +617,7 @@ struct NapiInfoMainView: View {
                 "tema": block.tema,
                 "erintett": block.erintett,
                 "tartalom": block.tartalom,
+                "surgos": block.surgos,
                 "index": block.index,
                 "pageNumber": currentPageNumber, // Track which page/photo this came from
                 "completed": false // Track completion status
@@ -667,27 +648,5 @@ struct NapiInfoMainView: View {
     func deleteInfo(_ info: NapiInfo) {
         viewContext.delete(info)
         try? viewContext.save()
-    }
-    
-    // MARK: - PDF to Image Conversion
-    private func convertPDFToImage(url: URL) -> UIImage? {
-        guard let document = CGPDFDocument(url as CFURL),
-              let page = document.page(at: 1) else {
-            return nil
-        }
-        
-        let pageRect = page.getBoxRect(.mediaBox)
-        let renderer = UIGraphicsImageRenderer(size: pageRect.size)
-        
-        let image = renderer.image { context in
-            UIColor.white.set()
-            context.fill(pageRect)
-            
-            context.cgContext.translateBy(x: 0, y: pageRect.size.height)
-            context.cgContext.scaleBy(x: 1.0, y: -1.0)
-            context.cgContext.drawPDFPage(page)
-        }
-        
-        return image
     }
 }
