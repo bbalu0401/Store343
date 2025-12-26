@@ -30,8 +30,50 @@ struct NapiInfoMainView: View {
     }
     
     var body: some View {
+        mainContent
+            .sheet(isPresented: $showImagePicker) {
+                ImagePicker(selectedImage: $selectedImage, sourceType: imagePickerSourceType)
+            }
+            .onChange(of: selectedImage) { newImage in
+                guard let image = newImage, let info = selectedInfoForUpload else { return }
+                
+                showImagePicker = false
+                processImage(image: image, for: info)
+                selectedImage = nil
+            }
+            .alert("Dokumentum törlése", isPresented: $showDeleteConfirmation) {
+                Button("Mégse", role: .cancel) {
+                    infoToDelete = nil
+                }
+                Button("Törlés", role: .destructive) {
+                    if let info = infoToDelete {
+                        deleteInfo(info)
+                    }
+                    infoToDelete = nil
+                }
+            } message: {
+                Text("Biztosan törlöd ezt a dokumentumot?")
+            }
+    }
+    
+    @ViewBuilder
+    private var mainContent: some View {
         ZStack {
             if selectedInfo == nil {
+                listView
+            }
+
+            if let info = selectedInfo {
+                NapiInfoDetailView(info: info, onBack: {
+                    selectedInfo = nil
+                })
+                .transition(.move(edge: .trailing))
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var listView: some View {
                 VStack(spacing: 0) {
                     // Navigation Bar (csak lista nézetben!)
                     HStack {
@@ -140,39 +182,7 @@ struct NapiInfoMainView: View {
                 .background(Color.adaptiveBackground(colorScheme: colorScheme))
                 }
                 .background(Color.adaptiveBackground(colorScheme: colorScheme))
-                .navigationBarHidden(true)
-            }
-
-            if let info = selectedInfo {
-                NapiInfoDetailView(info: info, onBack: {
-                    selectedInfo = nil
-                })
-                .transition(.move(edge: .trailing))
-            }
-        }
-        .sheet(isPresented: $showImagePicker) {
-            ImagePicker(selectedImage: $selectedImage, sourceType: imagePickerSourceType)
-        }
-        .onChange(of: selectedImage) { newImage in
-            guard let image = newImage, let info = selectedInfoForUpload else { return }
-            
-            showImagePicker = false
-            processImage(image: image, for: info)
-            selectedImage = nil
-        }
-        .alert("Dokumentum törlése", isPresented: $showDeleteConfirmation) {
-            Button("Mégse", role: .cancel) {
-                infoToDelete = nil
-            }
-            Button("Törlés", role: .destructive) {
-                if let info = infoToDelete {
-                    deleteInfo(info)
-                }
-                infoToDelete = nil
-            }
-        } message: {
-            Text("Biztosan törölni szeretnéd ezt a dokumentumot? Ez a művelet nem vonható vissza.")
-        }
+        .navigationBarHidden(true)
         .overlay(
             Group {
                 if processingOCR {
