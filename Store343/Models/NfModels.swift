@@ -3,6 +3,14 @@
 
 import Foundation
 
+/// Response from Claude API for NF OCR
+struct NfTermekResponse: Codable {
+    var bizonylat_szam: String
+    var cikkszam: String
+    var cikk_megnevezes: String
+    var elvi_keszlet: Int
+}
+
 /// Result of processing one or more pages of NF document
 struct NfOCRResult {
     var bizonylatSzam: String
