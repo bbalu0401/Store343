@@ -7,18 +7,18 @@ import UIKit
 
 // MARK: - Response Models
 
-struct NapiInfoBlock: Codable {
+struct OCRAPIResponse: Codable {
+    let success: Bool
+    let blocks: [APIBlock]?
+    let raw_text: String?
+    let error: String?
+}
+
+struct APIBlock: Codable {
     let tema: String
     let erintett: String
     let tartalom: String
     let hatarido: String?
-}
-
-struct OCRAPIResponse: Codable {
-    let success: Bool
-    let blocks: [NapiInfoBlock]?
-    let raw_text: String?
-    let error: String?
 }
 
 // MARK: - API Service
@@ -64,12 +64,24 @@ class ClaudeAPIService {
         let decoder = JSONDecoder()
         let apiResponse = try decoder.decode(OCRAPIResponse.self, from: data)
 
-        guard apiResponse.success, let blocks = apiResponse.blocks else {
+        guard apiResponse.success, let apiBlocks = apiResponse.blocks else {
             throw APIError.processingFailed(message: apiResponse.error ?? "Ismeretlen hiba")
         }
 
-        guard !blocks.isEmpty else {
+        guard !apiBlocks.isEmpty else {
             throw APIError.noInfoFound
+        }
+
+        // Convert API blocks to app's NapiInfoBlock model
+        let blocks = apiBlocks.enumerated().map { index, apiBlock in
+            NapiInfoBlock(
+                tema: apiBlock.tema,
+                erintett: apiBlock.erintett,
+                hatarido: apiBlock.hatarido,
+                tartalom: apiBlock.tartalom,
+                termekLista: nil,
+                index: index
+            )
         }
 
         return blocks
