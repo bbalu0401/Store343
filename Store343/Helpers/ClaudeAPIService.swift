@@ -132,7 +132,7 @@ class ClaudeAPIService {
 
     // MARK: - Placeholder functions for NF (to be implemented later)
     
-    func processNfVisszakuldes(image: UIImage) async throws -> [Any] {
+    func processNfVisszakuldes(image: UIImage) async throws -> [NfTermekResponse] {
         // TODO: Implement NF processing when needed
         throw APIError.processingFailed(message: "NF feldolgozás még nem elérhető")
     }
