@@ -229,12 +229,27 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
             erintett_match = re.search(r'\bÉrintett:\s*(.*)$', line, re.IGNORECASE)
             if erintett_match:
                 erintett_value = erintett_match.group(1).strip()
-                # If empty, check next line
+                # If empty, check next line(s) - may span multiple lines for store numbers
                 if not erintett_value and i + 1 < len(lines):
                     next_line = lines[i + 1].strip()
                     # Skip if next line is a skip pattern
                     if next_line and not any(skip in next_line.lower() for skip in skip_patterns):
                         erintett_value = next_line
+                        
+                        # If starts with "CSAK" and contains numbers, collect additional lines
+                        if 'csak' in erintett_value.lower() and re.search(r'\d', erintett_value):
+                            j = i + 2
+                            # Continue reading lines that contain only numbers, commas, spaces
+                            while j < len(lines):
+                                extra_line = lines[j].strip()
+                                # Stop if line is empty, has letters (except CSAK), or is a skip pattern
+                                if not extra_line or any(skip in extra_line.lower() for skip in skip_patterns):
+                                    break
+                                if re.match(r'^[\d,\s]+$', extra_line):
+                                    erintett_value += ' ' + extra_line
+                                    j += 1
+                                else:
+                                    break
                 
                 if erintett_value:
                     current_erintett = erintett_value
