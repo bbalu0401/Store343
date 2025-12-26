@@ -149,46 +149,110 @@ def fix_hungarian_ocr_errors(text: str) -> str:
     
     # Word-boundary based replacements (works at word end)
     word_replacements = {
+        # Videó variations
         r'\bvide\b': 'videó',
         r'\bvidé\b': 'videó',
         r'\bvide0\b': 'videó',
+        
+        # Diák variations
         r'\bdik\b': 'diák',
         r'\bDik\b': 'Diák',
+        
+        # Cipő variations
         r'\bcipc\b': 'cipő',
         r'\bcip6\b': 'cipő',
+        
+        # Munkavédelem
         r'\bmunkavedelmi\b': 'munkavédelmi',
         r'\bmunkavedelem\b': 'munkavédelem',
+        
+        # Határidő variations
         r'\bhatrid[oő]\b': 'határidő',
         r'\bHatrid[oő]\b': 'Határidő',
+        r'\bhatarido\b': 'határidő',
+        r'\bHatarido\b': 'Határidő',
+        
+        # Érintett variations
         r'\berintett\b': 'érintett',
         r'\bErintett\b': 'Érintett',
+        
+        # Téma variations
         r'\btema\b': 'téma',
         r'\bTema\b': 'Téma',
+        
+        # Sürgős variations
         r'\bsuegos\b': 'sürgős',
         r'\bSuegos\b': 'Sürgős',
         r'\bsurg6s\b': 'sürgős',
+        r'\bsurgos\b': 'sürgős',
+        r'\bSurgos\b': 'Sürgős',
+        
+        # Mennyiség
         r'\bmennyiseg\b': 'mennyiség',
         r'\bMennyiseg\b': 'Mennyiség',
+        
+        # Boltonként
         r'\bboltonkent\b': 'boltonként',
+        r'\bBoltonkent\b': 'Boltonként',
+        
+        # Küldünk
         r'\bkuldunk\b': 'küldünk',
+        r'\bKuldunk\b': 'Küldünk',
+        
+        # Feltöltés
         r'\bfeltoltes\b': 'feltöltés',
         r'\bFeltoltes\b': 'Feltöltés',
+        
+        # Bezárás
         r'\bbezaras\b': 'bezárás',
         r'\bBezaras\b': 'Bezárás',
+        
+        # Témakör
         r'\btemakor\b': 'témakör',
         r'\bTemakor\b': 'Témakör',
+        
+        # Emlékeztető
+        r'\bemlekezteto\b': 'emlékeztető',
+        r'\bEmlekezteto\b': 'Emlékeztető',
+        
+        # Készlet
+        r'\bkeszlet\b': 'készlet',
+        r'\bKeszlet\b': 'Készlet',
+        
+        # Végrehajtás
+        r'\bvegrehaitas\b': 'végrehajtás',
+        r'\bVegrehaitas\b': 'Végrehajtás',
+        
+        # Kérjük
+        r'\bkerjuk\b': 'kérjük',
+        r'\bKerjuk\b': 'Kérjük',
+        
+        # Áruház
+        r'\baruhaz\b': 'áruház',
+        r'\bAruhaz\b': 'Áruház',
+        
+        # Üzlet
+        r'\buzlet\b': 'üzlet',
+        r'\bUzlet\b': 'Üzlet',
     }
     
     # Apply word-boundary replacements
     for pattern, replacement in word_replacements.items():
         text = re.sub(pattern, replacement, text, flags=re.IGNORECASE if pattern[2].isupper() else 0)
     
-    # Simple string replacements
+    # Simple string replacements (not word-boundary dependent)
     simple_corrections = {
         '1ep': '1db',
         'lep': 'db',
         'Mayott': 'Másnap',
         'olcs6bb': 'olcsóbb',
+        'emlékcztetőI': 'emlékeztető',  # I vs ! at end
+        'emlékeztetőI': 'emlékeztető',
+        'delelőtti': 'délelőtti',
+        'delutani': 'délutáni',
+        'fuzzetek': 'füzzetek',
+        'fűzzetek': 'füzzetek',
+        'о': '•',  # Cyrillic o to bullet
     }
     
     for wrong, correct in simple_corrections.items():
