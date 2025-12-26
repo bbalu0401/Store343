@@ -212,7 +212,7 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
     lines = text.split('\n')
     
     current_block = None
-    current_block = None
+    current_erintett = None  # Track Érintett BEFORE Téma
     skip_patterns = ['info', 'feladat', 'melléklet', 'jelentés', 'napi infó', 'oldal', 'dátum:']
     
     for i, line in enumerate(lines):
@@ -222,6 +222,25 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
         
         line_lower = line.lower()
         
+        # Detect "Érintett:" BEFORE Téma (table layout: value on next line)
+        if 'érintett:' in line_lower and not current_block:
+            # Check if value is on same line
+            erintett_match = re.search(r'\bÉrintett:\s*(.*)$', line, re.IGNORECASE)
+            if erintett_match:
+                erintett_value = erintett_match.group(1).strip()
+                # If empty, check next line
+                if not erintett_value and i + 1 < len(lines):
+                    next_line = lines[i + 1].strip()
+                    # Skip if next line is a skip pattern
+                    if next_line and not any(skip in next_line.lower() for skip in skip_patterns):
+                        erintett_value = next_line
+                
+                if erintett_value:
+                    current_erintett = erintett_value
+                else:
+                    current_erintett = 'Mindenki'
+            continue
+        
         # Detect "Téma:" - start new block
         tema_match = re.search(r'\bTéma:\s*(.+)', line, re.IGNORECASE)
         if tema_match:
@@ -230,10 +249,10 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
                 finalize_block(current_block)
                 blocks.append(NapiInfoBlock(**current_block))
             
-            # Start new block with default Érintett (will be updated if found later)
+            # Start new block with stored Érintett
             current_block = {
                 'tema': tema_match.group(1).strip(),
-                'erintett': 'Mindenki',
+                'erintett': current_erintett if current_erintett else 'Mindenki',
                 'tartalom': '',
                 'hatarido': None,
                 'surgos': False,
@@ -241,6 +260,7 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
                 'termekek': [],
                 'emails': []
             }
+            current_erintett = None  # Reset for next block
             continue
         
         # Skip header lines
