@@ -215,7 +215,7 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
     current_erintett = None  # Track Érintett before Téma
     skip_patterns = ['info', 'feladat', 'melléklet', 'jelentés', 'napi infó', 'oldal', 'dátum:']
     
-    for line in lines:
+    for i, line in enumerate(lines):
         line = line.strip()
         if not line or len(line) < 3:
             continue
@@ -223,9 +223,14 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
         line_lower = line.lower()
         
         # Detect "Érintett:" BEFORE "Téma:" (store for next block)
-        erintett_before_tema = re.search(r'\bÉrintett:\s*([^\n\r]+)', line, re.IGNORECASE)
+        # Check both same line and next line
+        erintett_before_tema = re.search(r'\bÉrintett:\s*(.*)$', line, re.IGNORECASE)
         if erintett_before_tema and not current_block:
             erintett_value = erintett_before_tema.group(1).strip()
+            # If empty, check next line
+            if not erintett_value and i + 1 < len(lines):
+                erintett_value = lines[i + 1].strip()
+            
             if erintett_value:
                 current_erintett = erintett_value
             else:
@@ -296,9 +301,14 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
             continue
         
         # Detect "Érintett:" within block (skip from content)
-        erintett_match = re.search(r'\bÉrintett:\s*([^\n\r]+)', line, re.IGNORECASE)
+        # Check both same line and next line
+        erintett_match = re.search(r'\bÉrintett:\s*(.*)$', line, re.IGNORECASE)
         if erintett_match:
             erintett_value = erintett_match.group(1).strip()
+            # If empty, check next line
+            if not erintett_value and i + 1 < len(lines):
+                erintett_value = lines[i + 1].strip()
+            
             if erintett_value:
                 current_block['erintett'] = erintett_value
             # Skip this line from content
