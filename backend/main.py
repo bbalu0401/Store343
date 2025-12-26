@@ -113,7 +113,7 @@ async def process_napi_info(request: ImageBase64Request):
         print(f"\n📄 OCR RAW TEXT - Érintett AND Téma context:")
         lines = full_text.split('\n')
         for i, line in enumerate(lines):
-            if 'érintett' in line.lower() or 'téma' in line.lower():
+            if 'érintett' in line.lower() or 'téma' in line.lower() or 'határidő' in line.lower():
                 print(f"  Line {i}: {line.strip()}")
                 # Show next 5 lines for context
                 for j in range(1, 6):
