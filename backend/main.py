@@ -128,65 +128,53 @@ async def process_napi_info(request: ImageBase64Request):
 
 def fix_hungarian_ocr_errors(text: str) -> str:
     """Fix common Hungarian OCR character errors"""
-    corrections = {
-        # Videó hibák
-        'vidé ': 'videó ',
-        'vide ': 'videó ',
-        'vidé': 'videó',
-        'vide0': 'videó',
-        
-        # Diák/cipő hibák
-        'dik ': 'diák ',
-        'Dik ': 'Diák ',
-        'cipc': 'cipő',
-        'cip6': 'cipő',
-        'munkavedelmi': 'munkavédelmi',
-        'munkavedelem': 'munkavédelem',
-        
-        # Határidő
-        'hatrid': 'határidő',
-        'Hatrid': 'Határidő',
-        'hatarido': 'határidő',
-        'Hatarido': 'Határidő',
-        
-        # Érintett
-        'erintett': 'érintett',
-        'Erintett': 'Érintett',
-        
-        # Téma
-        'tema': 'téma',
-        'Tema': 'Téma',
-        
-        # Sürgős
-        'suegos': 'sürgős',
-        'Suegos': 'Sürgős',
-        'surg6s': 'sürgős',
-        
-        # Verseny
-        'verseny ': 'verseny ',
-        
-        # Mennyiség
-        '1ep': '1db',
-        'lep': 'db',
-        'mennyiseg': 'mennyiség',
-        'Mennyiseg': 'Mennyiség',
-        
-        # Egyéb gyakoriak
-        'boltonkent': 'boltonként',
-        'boltonk': 'boltunk',
-        'kuldunk': 'küldünk',
-        'Mayott': 'Másnap',
-        'olcsébb': 'olcsóbb',
-        'olcs6bb': 'olcsóbb',
-        'feltoltes': 'feltöltés',
-        'Feltoltes': 'Feltöltés',
-        'bezaras': 'bezárás',
-        'Bezaras': 'Bezárás',
-        'temakor': 'témakör',
-        'Temakor': 'Témakör',
+    import re
+    
+    # Word-boundary based replacements (works at word end)
+    word_replacements = {
+        r'\bvide\b': 'videó',
+        r'\bvidé\b': 'videó',
+        r'\bvide0\b': 'videó',
+        r'\bdik\b': 'diák',
+        r'\bDik\b': 'Diák',
+        r'\bcipc\b': 'cipő',
+        r'\bcip6\b': 'cipő',
+        r'\bmunkavedelmi\b': 'munkavédelmi',
+        r'\bmunkavedelem\b': 'munkavédelem',
+        r'\bhatrid[oő]\b': 'határidő',
+        r'\bHatrid[oő]\b': 'Határidő',
+        r'\berintett\b': 'érintett',
+        r'\bErintett\b': 'Érintett',
+        r'\btema\b': 'téma',
+        r'\bTema\b': 'Téma',
+        r'\bsuegos\b': 'sürgős',
+        r'\bSuegos\b': 'Sürgős',
+        r'\bsurg6s\b': 'sürgős',
+        r'\bmennyiseg\b': 'mennyiség',
+        r'\bMennyiseg\b': 'Mennyiség',
+        r'\bboltonkent\b': 'boltonként',
+        r'\bkuldunk\b': 'küldünk',
+        r'\bfeltoltes\b': 'feltöltés',
+        r'\bFeltoltes\b': 'Feltöltés',
+        r'\bbezaras\b': 'bezárás',
+        r'\bBezaras\b': 'Bezárás',
+        r'\btemakor\b': 'témakör',
+        r'\bTemakor\b': 'Témakör',
     }
     
-    for wrong, correct in corrections.items():
+    # Apply word-boundary replacements
+    for pattern, replacement in word_replacements.items():
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE if pattern[2].isupper() else 0)
+    
+    # Simple string replacements
+    simple_corrections = {
+        '1ep': '1db',
+        'lep': 'db',
+        'Mayott': 'Másnap',
+        'olcs6bb': 'olcsóbb',
+    }
+    
+    for wrong, correct in simple_corrections.items():
         text = text.replace(wrong, correct)
     
     return text
