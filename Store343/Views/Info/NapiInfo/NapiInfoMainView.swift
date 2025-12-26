@@ -85,146 +85,59 @@ struct NapiInfoMainView: View {
                 .padding(.bottom, 4)
                 .background(Color.adaptiveBackground(colorScheme: colorScheme))
 
-                // Calendar View
-                VStack(spacing: 0) {
-                    switch calendarView {
-                    case .week:
-                        WeekCalendarView(
-                            selectedDate: $selectedDate,
-                            napiInfos: napiInfos,
-                            onToggleCalendar: toggleCalendarView
-                        )
-                    case .month:
-                        MonthCalendarView(
-                            selectedDate: $selectedDate,
-                            calendarView: $calendarView,
-                            napiInfos: napiInfos
-                        )
-                    case .year:
-                        YearCalendarView(
-                            selectedDate: $selectedDate,
-                            calendarView: $calendarView
-                        )
+                // Calendar View with integrated expandable info
+                ScrollView {
+                    VStack(spacing: 0) {
+                        switch calendarView {
+                        case .week:
+                            WeekCalendarViewWithInfo(
+                                selectedDate: $selectedDate,
+                                expandedDate: $selectedDate,
+                                napiInfos: napiInfos,
+                                onToggleCalendar: toggleCalendarView,
+                                onSelectInfo: { info in
+                                    if info.feldolgozva {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            selectedInfo = info
+                                        }
+                                    }
+                                },
+                                onAddPhoto: { info in
+                                    selectedInfoForUpload = info
+                                    showImagePicker = true
+                                },
+                                onDeleteInfo: { info in
+                                    infoToDelete = info
+                                    showDeleteConfirmation = true
+                                },
+                                onCreateNew: { date in
+                                    let newInfo = NapiInfo(context: viewContext)
+                                    newInfo.datum = date
+                                    newInfo.feldolgozva = false
+                                    newInfo.oldalSzam = 0
+                                    newInfo.tema = nil
+                                    newInfo.erintett = nil
+                                    newInfo.tartalom = nil
+                                    try? viewContext.save()
+                                    selectedInfoForUpload = newInfo
+                                    showImagePicker = true
+                                }
+                            )
+                        case .month:
+                            MonthCalendarView(
+                                selectedDate: $selectedDate,
+                                calendarView: $calendarView,
+                                napiInfos: napiInfos
+                            )
+                        case .year:
+                            YearCalendarView(
+                                selectedDate: $selectedDate,
+                                calendarView: $calendarView
+                            )
+                        }
                     }
                 }
                 .background(Color.adaptiveBackground(colorScheme: colorScheme))
-                .overlay(
-                    Divider()
-                        .background(Color.secondary.opacity(0.3)),
-                    alignment: .bottom
-                )
-                
-                // Info list for selected date
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(formatDateWithWeekday(selectedDate))
-                            .font(.title2)
-                            .fontWeight(.light)
-                            .padding(.horizontal)
-                            .padding(.top)
-
-                        let infoCount = getInfosForDate(selectedDate).count
-                        if infoCount > 0 {
-                            let pageCount = getPageCount(for: selectedDate)
-                            if pageCount > 0 {
-                                Text("\(pageCount) oldal")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.lidlBlue)
-                                    .padding(.horizontal)
-                            }
-                        }
-
-                        Text("Kattints a dokumentumra a részletekért")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal)
-                        
-                        ForEach(getInfosForDate(selectedDate), id: \.objectID) { info in
-                            Button(action: {
-                                // Only open detail view if processed
-                                if info.feldolgozva {
-                                    withAnimation(.easeInOut(duration: 0.3)) {
-                                        selectedInfo = info
-                                    }
-                                }
-                            }) {
-                                NapiInfoListItem(info: info, onAddPhoto: {
-                                    // Add new image page to this document
-                                    selectedInfoForUpload = info
-                                    showImagePicker = true
-                                })
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            .padding(.horizontal)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    infoToDelete = info
-                                    showDeleteConfirmation = true
-                                } label: {
-                                    Label("Törlés", systemImage: "trash")
-                                }
-                            }
-                        }
-
-                        if getInfosForDate(selectedDate).isEmpty {
-                            VStack(spacing: 16) {
-                                Image(systemName: "doc.text")
-                                    .font(.system(size: 60))
-                                    .foregroundColor(.secondary.opacity(0.5))
-
-                                Text("Nincs információ")
-                                    .font(.title3)
-                                    .fontWeight(.medium)
-
-                                Text("Erre a napra még nem került feltöltésre napi infó.")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-
-                                Button(action: {
-                                    // Create new document and show image picker directly
-                                    let existingDocs = getInfosForDate(selectedDate)
-                                    if let existingInfo = existingDocs.first {
-                                        selectedInfoForUpload = existingInfo
-                                    } else {
-                                        let newInfo = NapiInfo(context: viewContext)
-                                        newInfo.datum = selectedDate
-                                        newInfo.feldolgozva = false
-                                        newInfo.oldalSzam = 0
-                                        newInfo.tema = nil
-                                        newInfo.erintett = nil
-                                        newInfo.tartalom = nil
-                                        try? viewContext.save()
-                                        selectedInfoForUpload = newInfo
-                                    }
-                                    showImagePicker = true
-                                }) {
-                                    HStack {
-                                        Image(systemName: "photo.fill")
-                                        Text("Fotó feltöltése")
-                                    }
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                                    .padding()
-                                    .frame(maxWidth: .infinity)
-                                    .background(Color.lidlBlue)
-                                    .cornerRadius(12)
-                                }
-                                .padding(.horizontal, 40)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 60)
-                        }
-                    }
-                    .padding(.bottom, 100)
-                }
-                .gesture(
-                    DragGesture(minimumDistance: 50)
-                        .onEnded { gesture in
-                            handleDaySwipe(gesture)
-                        }
-                )
                 }
                 .background(Color.adaptiveBackground(colorScheme: colorScheme))
                 .navigationBarHidden(true)
@@ -405,33 +318,6 @@ struct NapiInfoMainView: View {
             return "calendar"
         case .year:
             return "calendar.badge.clock"
-        }
-    }
-
-    // MARK: - Day Swipe Navigation
-    func handleDaySwipe(_ gesture: DragGesture.Value) {
-        let calendar = Calendar.current
-
-        if gesture.translation.width < -50 {
-            // Swipe left → next day
-            if let newDate = calendar.date(byAdding: .day, value: 1, to: selectedDate) {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    selectedDate = newDate
-                }
-                // Haptic feedback
-                let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred()
-            }
-        } else if gesture.translation.width > 50 {
-            // Swipe right → previous day
-            if let newDate = calendar.date(byAdding: .day, value: -1, to: selectedDate) {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    selectedDate = newDate
-                }
-                // Haptic feedback
-                let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred()
-            }
         }
     }
 
