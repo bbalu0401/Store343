@@ -500,8 +500,13 @@ struct NapiInfoMainView: View {
 
         Task {
             do {
-                // Call Claude API for document processing
-                let blocks = try await ClaudeAPIService.shared.processNapiInfoDocument(documentURL: documentURL)
+                // Convert PDF to image first
+                guard let pdfImage = convertPDFToImage(url: documentURL) else {
+                    throw NSError(domain: "Store343", code: -1, userInfo: [NSLocalizedDescriptionKey: "PDF konverzió sikertelen"])
+                }
+                
+                // Call Claude API for image processing
+                let blocks = try await ClaudeAPIService.shared.processNapiInfo(image: pdfImage)
 
                 // Update UI on main thread
                 await MainActor.run {
@@ -662,5 +667,27 @@ struct NapiInfoMainView: View {
     func deleteInfo(_ info: NapiInfo) {
         viewContext.delete(info)
         try? viewContext.save()
+    }
+    
+    // MARK: - PDF to Image Conversion
+    private func convertPDFToImage(url: URL) -> UIImage? {
+        guard let document = CGPDFDocument(url as CFURL),
+              let page = document.page(at: 1) else {
+            return nil
+        }
+        
+        let pageRect = page.getBoxRect(.mediaBox)
+        let renderer = UIGraphicsImageRenderer(size: pageRect.size)
+        
+        let image = renderer.image { context in
+            UIColor.white.set()
+            context.fill(pageRect)
+            
+            context.cgContext.translateBy(x: 0, y: pageRect.size.height)
+            context.cgContext.scaleBy(x: 1.0, y: -1.0)
+            context.cgContext.drawPDFPage(page)
+        }
+        
+        return image
     }
 }
