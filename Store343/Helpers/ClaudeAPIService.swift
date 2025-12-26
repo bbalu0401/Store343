@@ -137,7 +137,7 @@ class ClaudeAPIService {
         throw APIError.processingFailed(message: "NF feldolgozás még nem elérhető")
     }
     
-    func processNfVisszakuldesDocument(documentURL: URL) async throws -> [Any] {
+    func processNfVisszakuldesDocument(documentURL: URL) async throws -> [NfTermekResponse] {
         // TODO: Implement NF document processing when needed
         throw APIError.processingFailed(message: "NF feldolgozás még nem elérhető")
     }
