@@ -132,7 +132,7 @@ struct NapiInfoMainView: View {
                     VStack(spacing: 0) {
                         switch calendarView {
                         case .week:
-                            WeekCalendarViewWithInfo(
+                            WeekCalendarView(
                                 selectedDate: $selectedDate,
                                 expandedDate: $selectedDate,
                                 napiInfos: napiInfos,
