@@ -109,6 +109,12 @@ async def process_napi_info(request: ImageBase64Request):
         # Fix common Hungarian OCR errors
         full_text = fix_hungarian_ocr_errors(full_text)
         
+        # DEBUG: Print all "Érintett:" lines from OCR
+        print(f"\n📄 OCR RAW TEXT - Érintett lines:")
+        for line in full_text.split('\n'):
+            if 'érintett' in line.lower() or 'csak' in line.lower():
+                print(f"  → {line.strip()}")
+        
         # Parse document
         document_date, page_number = extract_document_metadata(full_text)
         blocks = parse_napi_info_text(full_text)
