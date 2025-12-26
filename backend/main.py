@@ -113,6 +113,11 @@ async def process_napi_info(request: ImageBase64Request):
         document_date, page_number = extract_document_metadata(full_text)
         blocks = parse_napi_info_text(full_text)
         
+        # DEBUG: Print parsed blocks to Railway logs
+        print(f"\n🔍 OCR DEBUG - Found {len(blocks)} blocks:")
+        for i, block in enumerate(blocks, 1):
+            print(f"  Block {i}: Téma='{block.tema}' | Érintett='{block.erintett}'")
+        
         return NapiInfoResponse(
             success=True,
             blocks=blocks,
