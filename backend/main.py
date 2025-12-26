@@ -129,29 +129,61 @@ async def process_napi_info(request: ImageBase64Request):
 def fix_hungarian_ocr_errors(text: str) -> str:
     """Fix common Hungarian OCR character errors"""
     corrections = {
+        # Videó hibák
         'vidé ': 'videó ',
         'vide ': 'videó ',
+        'vidé': 'videó',
+        'vide0': 'videó',
+        
+        # Diák/cipő hibák
+        'dik ': 'diák ',
+        'Dik ': 'Diák ',
+        'cipc': 'cipő',
+        'cip6': 'cipő',
+        'munkavedelmi': 'munkavédelmi',
+        'munkavedelem': 'munkavédelem',
+        
+        # Határidő
         'hatrid': 'határidő',
         'Hatrid': 'Határidő',
+        'hatarido': 'határidő',
+        'Hatarido': 'Határidő',
+        
+        # Érintett
         'erintett': 'érintett',
         'Erintett': 'Érintett',
+        
+        # Téma
         'tema': 'téma',
         'Tema': 'Téma',
+        
+        # Sürgős
         'suegos': 'sürgős',
         'Suegos': 'Sürgős',
-        'feladat': 'feladat',
-        'jelentés': 'jelentés',
-        'cipc': 'cipő',
-        'cipő': 'cipő',
+        'surg6s': 'sürgős',
+        
+        # Verseny
         'verseny ': 'verseny ',
+        
+        # Mennyiség
         '1ep': '1db',
         'lep': 'db',
+        'mennyiseg': 'mennyiség',
+        'Mennyiseg': 'Mennyiség',
+        
+        # Egyéb gyakoriak
         'boltonkent': 'boltonként',
         'boltonk': 'boltunk',
         'kuldunk': 'küldünk',
         'Mayott': 'Másnap',
         'olcsébb': 'olcsóbb',
         'olcs6bb': 'olcsóbb',
+        'feltoltes': 'feltöltés',
+        'Feltoltes': 'Feltöltés',
+        'bezaras': 'bezárás',
+        'Bezaras': 'Bezárás',
+        'temakor': 'témakör',
+        'Temakor': 'Témakör',
     }
     
     for wrong, correct in corrections.items():
