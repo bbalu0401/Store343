@@ -211,7 +211,7 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
         erintett_before_tema = re.search(r'\bÉrintett:\s*([^\n\r]+)', line, re.IGNORECASE)
         if erintett_before_tema and not current_block:
             erintett_value = erintett_before_tema.group(1).strip()
-            if erintett_value and erintett_value.lower() not in ['mindenki', 'minden']:
+            if erintett_value:
                 current_erintett = erintett_value
             else:
                 current_erintett = 'Mindenki'
