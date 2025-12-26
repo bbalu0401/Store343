@@ -222,8 +222,9 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
         
         line_lower = line.lower()
         
-        # Detect "Érintett:" BEFORE Téma (table layout: value on next line)
-        if 'érintett:' in line_lower and not current_block:
+        # Detect "Érintett:" for NEXT Téma (table layout: value on next line)
+        # Process regardless of current_block state
+        if 'érintett:' in line_lower:
             # Check if value is on same line
             erintett_match = re.search(r'\bÉrintett:\s*(.*)$', line, re.IGNORECASE)
             if erintett_match:
