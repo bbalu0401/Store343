@@ -9,6 +9,7 @@ from typing import List, Optional
 import os
 import re
 from google.cloud import vision
+import json
 
 app = FastAPI(title="Store343 OCR API", version="1.0.0")
 
@@ -28,7 +29,18 @@ def get_vision_client():
     """Initialize Google Cloud Vision client"""
     global vision_client
     if vision_client is None:
-        vision_client = vision.ImageAnnotatorClient()
+        # Check if credentials are provided as JSON string (Railway)
+        creds_json = os.getenv('GOOGLE_APPLICATION_CREDENTIALS_JSON')
+        if creds_json:
+            # Parse JSON string and create client from dict
+            import json
+            from google.oauth2 import service_account
+            creds_dict = json.loads(creds_json)
+            credentials = service_account.Credentials.from_service_account_info(creds_dict)
+            vision_client = vision.ImageAnnotatorClient(credentials=credentials)
+        else:
+            # Use default credentials (local development with GOOGLE_APPLICATION_CREDENTIALS file)
+            vision_client = vision.ImageAnnotatorClient()
     return vision_client
 
 # MARK: - Models
