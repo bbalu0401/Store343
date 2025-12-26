@@ -327,6 +327,19 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
         if 'csak' in line_lower and re.search(r'\bCSAK\s+[\d,\s]+', line, re.IGNORECASE):
             continue
         
+        # Check if line starts with store numbers (continuation of CSAK Érintett from left column)
+        # If current Érintett starts with "CSAK", append lines that start with numbers
+        if current_block['erintett'].startswith('CSAK'):
+            number_prefix = re.match(r'^(\d+,?\s*)+', line)
+            if number_prefix:
+                # Extract just the numbers from the beginning of the line
+                numbers_only = number_prefix.group(0).strip()
+                current_block['erintett'] += ' ' + numbers_only
+                # Remove numbers from the line to avoid duplicating in content
+                line = line[len(numbers_only):].strip()
+                if not line or len(line) < 3:
+                    continue
+        
         # Skip certain patterns
         if any(pattern in line_lower for pattern in skip_patterns):
             continue
