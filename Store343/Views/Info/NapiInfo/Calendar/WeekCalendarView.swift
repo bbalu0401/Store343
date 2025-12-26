@@ -120,6 +120,22 @@ struct WeekCalendarView: View {
                     Spacer()
                     
                     if infos.count > 0 {
+                        // Show earliest deadline if exists
+                        if let earliestDeadline = getEarliestDeadline(for: infos) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "clock.fill")
+                                    .font(.caption)
+                                Text(earliestDeadline)
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.orange)
+                            .cornerRadius(8)
+                        }
+                        
                         Text("\(infos.count) téma")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -241,6 +257,16 @@ struct WeekCalendarView: View {
         }
 
         return weekDays
+    }
+    
+    private func getEarliestDeadline(for infos: [NapiInfo]) -> String? {
+        // Return the first non-empty deadline found
+        for info in infos {
+            if let hatarido = info.hatarido, !hatarido.isEmpty {
+                return hatarido
+            }
+        }
+        return nil
     }
 
     private func getInfosForDate(_ date: Date) -> [NapiInfo] {
