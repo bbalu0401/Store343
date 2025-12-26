@@ -1,11 +1,30 @@
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-venv/
 env/
+venv/
 ENV/
-.env
 .venv
-*.log
+
+# Google Cloud credentials
+*.json
+!railway.json
+service-account.json
+google-credentials.json
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
