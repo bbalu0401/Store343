@@ -25,8 +25,7 @@ struct OCRAPIResponse: Codable {
 class ClaudeAPIService {
     static let shared = ClaudeAPIService()
 
-    // TODO: Update this URL after Railway deployment
-    private let baseURL = "https://your-app-name.up.railway.app"
+    private let baseURL = "https://store343-production-dc69.up.railway.app"
 
     private init() {}
 
