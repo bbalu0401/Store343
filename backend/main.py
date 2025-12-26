@@ -115,8 +115,10 @@ async def process_napi_info(request: ImageBase64Request):
         for i, line in enumerate(lines):
             if 'érintett' in line.lower() or 'téma' in line.lower():
                 print(f"  Line {i}: {line.strip()}")
-                if i + 1 < len(lines):
-                    print(f"  Line {i+1}: {lines[i+1].strip()}")
+                # Show next 5 lines for context
+                for j in range(1, 6):
+                    if i + j < len(lines):
+                        print(f"  Line {i+j}: {lines[i+j].strip()}")
                 print()
         
         # Parse document
