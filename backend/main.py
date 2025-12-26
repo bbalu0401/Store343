@@ -298,24 +298,15 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
                 current_block['surgos'] = True
             continue
         
-        # Detect "Érintett:" within block (skip from content)
-        # Check both same line and next line
-        erintett_match = re.search(r'\bÉrintett:\s*(.*)$', line, re.IGNORECASE)
-        if erintett_match:
-            erintett_value = erintett_match.group(1).strip()
-            # If empty, check next line
-            if not erintett_value and i + 1 < len(lines):
-                erintett_value = lines[i + 1].strip()
-            
-            if erintett_value:
-                current_block['erintett'] = erintett_value
-            # Skip this line from content
+        # NOTE: Skip "Érintett:" within blocks - it belongs to the NEXT block
+        # In table layout, Érintett appears in left column BEFORE the next Téma
+        # Don't process it here, it was already captured in the "before Téma" logic
+        if 'érintett:' in line_lower:
             continue
         
-        # Also check for "CSAK" patterns within block (store-specific targeting)
-        csak_match_in_block = re.search(r'\bCSAK\s+([\d,\s]+)', line, re.IGNORECASE)
-        if csak_match_in_block:
-            current_block['erintett'] = 'CSAK ' + csak_match_in_block.group(1).strip()
+        # NOTE: Skip "CSAK" patterns too - same reason as Érintett
+        # CSAK appears in left column before the next Téma
+        if 'csak' in line_lower and re.search(r'\bCSAK\s+[\d,\s]+', line, re.IGNORECASE):
             continue
         
         # Skip certain patterns
