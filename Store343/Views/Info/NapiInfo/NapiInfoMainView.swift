@@ -452,6 +452,7 @@ struct NapiInfoMainView: View {
                             tema: ClaudeAPIService.correctHungarianText(block.tema),
                             erintett: ClaudeAPIService.correctHungarianText(block.erintett),
                             hatarido: block.hatarido.map { ClaudeAPIService.correctHungarianText($0) },
+                            surgos: block.surgos,
                             tartalom: ClaudeAPIService.correctHungarianText(block.tartalom),
                             termekLista: nil, // Claude doesn't parse products separately
                             index: 0
@@ -501,6 +502,7 @@ struct NapiInfoMainView: View {
                             tema: ClaudeAPIService.correctHungarianText(block.tema),
                             erintett: ClaudeAPIService.correctHungarianText(block.erintett),
                             hatarido: block.hatarido.map { ClaudeAPIService.correctHungarianText($0) },
+                            surgos: block.surgos,
                             tartalom: ClaudeAPIService.correctHungarianText(block.tartalom),
                             termekLista: nil,
                             index: 0

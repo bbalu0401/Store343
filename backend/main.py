@@ -142,7 +142,16 @@ def fix_hungarian_ocr_errors(text: str) -> str:
         'feladat': 'feladat',
         'jelentés': 'jelentés',
         'cipc': 'cipő',
+        'cipő': 'cipő',
         'verseny ': 'verseny ',
+        '1ep': '1db',
+        'lep': 'db',
+        'boltonkent': 'boltonként',
+        'boltonk': 'boltunk',
+        'kuldunk': 'küldünk',
+        'Mayott': 'Másnap',
+        'olcsébb': 'olcsóbb',
+        'olcs6bb': 'olcsóbb',
     }
     
     for wrong, correct in corrections.items():
@@ -168,6 +177,7 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
     lines = text.split('\n')
     
     current_block = None
+    current_erintett = None  # Track Érintett before Téma
     skip_patterns = ['info', 'feladat', 'melléklet', 'jelentés', 'napi infó', 'oldal', 'dátum:']
     
     for line in lines:
@@ -177,6 +187,22 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
         
         line_lower = line.lower()
         
+        # Detect "Érintett:" BEFORE "Téma:" (store for next block)
+        erintett_before_tema = re.search(r'\bÉrintett:\s*([^\n\r]+)', line, re.IGNORECASE)
+        if erintett_before_tema and not current_block:
+            erintett_value = erintett_before_tema.group(1).strip()
+            if erintett_value and erintett_value.lower() not in ['mindenki', 'minden']:
+                current_erintett = erintett_value
+            else:
+                current_erintett = 'Mindenki'
+            continue
+        
+        # Also check for "CSAK" patterns (store-specific targeting)
+        csak_match = re.search(r'\bCSAK\s+([\d,\s]+)', line, re.IGNORECASE)
+        if csak_match and not current_block:
+            current_erintett = 'CSAK ' + csak_match.group(1).strip()
+            continue
+        
         # Detect "Téma:" - start new block
         tema_match = re.search(r'\bTéma:\s*(.+)', line, re.IGNORECASE)
         if tema_match:
@@ -185,10 +211,10 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
                 finalize_block(current_block)
                 blocks.append(NapiInfoBlock(**current_block))
             
-            # Start new block
+            # Start new block with stored Érintett
             current_block = {
                 'tema': tema_match.group(1).strip(),
-                'erintett': 'Mindenki',
+                'erintett': current_erintett if current_erintett else 'Mindenki',
                 'tartalom': '',
                 'hatarido': None,
                 'surgos': False,
@@ -196,6 +222,7 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
                 'termekek': [],
                 'emails': []
             }
+            current_erintett = None  # Reset for next block
             continue
         
         # Skip header lines
@@ -233,19 +260,20 @@ def parse_napi_info_text(text: str) -> List[NapiInfoBlock]:
                 current_block['surgos'] = True
             continue
         
-        # Detect "Érintett:"
+        # Detect "Érintett:" within block (skip from content)
         erintett_match = re.search(r'\bÉrintett:\s*([^\n\r]+)', line, re.IGNORECASE)
         if erintett_match:
             erintett_value = erintett_match.group(1).strip()
             # Accept any non-empty value that's not explicitly "mindenki"
             if erintett_value and erintett_value.lower() not in ['mindenki', 'minden']:
                 current_block['erintett'] = erintett_value
+            # Skip this line from content
             continue
         
-        # Also check for "CSAK" patterns (store-specific targeting)
-        csak_match = re.search(r'\bCSAK\s+([\d,\s]+)', line, re.IGNORECASE)
-        if csak_match:
-            current_block['erintett'] = 'CSAK ' + csak_match.group(1).strip()
+        # Also check for "CSAK" patterns within block (store-specific targeting)
+        csak_match_in_block = re.search(r'\bCSAK\s+([\d,\s]+)', line, re.IGNORECASE)
+        if csak_match_in_block:
+            current_block['erintett'] = 'CSAK ' + csak_match_in_block.group(1).strip()
             continue
         
         # Skip certain patterns
