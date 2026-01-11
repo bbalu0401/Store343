@@ -26,7 +26,7 @@ struct APIBlock: Codable {
 class ClaudeAPIService {
     static let shared = ClaudeAPIService()
 
-    private let baseURL = "https://store343-production-dc69.up.railway.app"
+    private let baseURL = "https://store343-backend-production.up.railway.app"
 
     private init() {}
 
