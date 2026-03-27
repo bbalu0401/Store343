@@ -1,75 +1,45 @@
 // ClaudeAPIService.swift
-// Claude API integration for accurate Napi Infó OCR parsing
+// OCR API integration for Napi Infó processing
+// Uses Google Cloud Vision API backend
 
 import Foundation
 import UIKit
 
 // MARK: - Response Models
 
-// Napi Info Models - Backend Response Format
-struct ClaudeNapiInfoBlock: Codable {
+struct OCRAPIResponse: Codable {
+    let success: Bool
+    let blocks: [APIBlock]?
+    let raw_text: String?
+    let error: String?
+}
+
+struct APIBlock: Codable {
     let tema: String
     let erintett: String
     let tartalom: String
     let hatarido: String?
-    let emoji: String? // AI-selected emoji for the topic
-    let checkboxes: [String]
-    let images: [String]?
-}
-
-struct ClaudeAPIResponse: Codable {
-    let success: Bool
-    let blocks: [ClaudeNapiInfoBlock]?
-    let error: String?
-    let usage: Usage?
-
-    struct Usage: Codable {
-        let input_tokens: Int
-        let output_tokens: Int
-    }
-}
-
-// NF Visszaküldés Models
-struct NfTermekResponse: Codable {
-    let cikkszam: String
-    let cikk_megnevezes: String
-    let bizonylat_szam: String
-    let elvi_keszlet: Int
-}
-
-struct NfClaudeAPIResponse: Codable {
-    let success: Bool
-    let termekek: [NfTermekResponse]?
-    let error: String?
-    let usage: Usage?
-
-    struct Usage: Codable {
-        let input_tokens: Int
-        let output_tokens: Int
-    }
+    let surgos: Bool?
 }
 
 // MARK: - API Service
 class ClaudeAPIService {
     static let shared = ClaudeAPIService()
 
-    private let baseURL = "https://store343-production.up.railway.app"
+    private let baseURL = "https://store343-backend-production.up.railway.app"
 
     private init() {}
 
-    /// Process Napi Infó document with Claude API (Image)
-    /// - Parameter image: UIImage of the document to process
-    /// - Returns: Array of parsed ClaudeNapiInfoBlock objects
-    func processNapiInfo(image: UIImage) async throws -> [ClaudeNapiInfoBlock] {
-        // 1. Convert image to JPEG with higher quality for better OCR
+    // MARK: - Napi Info Processing
+
+    /// Process Napi Infó document with Google Cloud Vision API
+    func processNapiInfo(image: UIImage) async throws -> [NapiInfoBlock] {
         guard let imageData = image.jpegData(compressionQuality: 0.95) else {
             throw APIError.imageConversionFailed
         }
 
-        // 2. Encode to base64
         let base64String = imageData.base64EncodedString()
 
-        // 3. Create request
         guard let url = URL(string: "\(baseURL)/api/process-napi-info") else {
             throw APIError.invalidURL
         }
@@ -77,15 +47,13 @@ class ClaudeAPIService {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 60 // Longer timeout for API processing
+        request.timeoutInterval = 60
 
         let body: [String: Any] = ["image_base64": base64String]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        // 4. Make request
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        // 5. Validate response
         guard let httpResponse = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
@@ -94,312 +62,86 @@ class ClaudeAPIService {
             throw APIError.serverError(statusCode: httpResponse.statusCode)
         }
 
-        // 6. Parse JSON response
         let decoder = JSONDecoder()
-        let apiResponse = try decoder.decode(ClaudeAPIResponse.self, from: data)
+        let apiResponse = try decoder.decode(OCRAPIResponse.self, from: data)
 
-        // 7. Check success
-        guard apiResponse.success, let blocks = apiResponse.blocks else {
-            throw APIError.processingFailed(message: apiResponse.error ?? "Ismeretlen hiba történt")
+        guard apiResponse.success, let apiBlocks = apiResponse.blocks else {
+            throw APIError.processingFailed(message: apiResponse.error ?? "Ismeretlen hiba")
         }
 
-        // 8. Validate blocks
-        guard !blocks.isEmpty else {
+        guard !apiBlocks.isEmpty else {
             throw APIError.noInfoFound
+        }
+
+        // Convert API blocks to app's NapiInfoBlock model
+        let blocks = apiBlocks.enumerated().map { index, apiBlock in
+            NapiInfoBlock(
+                tema: apiBlock.tema,
+                erintett: apiBlock.erintett,
+                hatarido: apiBlock.hatarido,
+                surgos: apiBlock.surgos ?? false,
+                tartalom: apiBlock.tartalom,
+                termekLista: nil,
+                index: index
+            )
         }
 
         return blocks
-    }
-
-    /// Process Napi Infó document with Claude API (PDF/Document)
-    /// - Parameter documentURL: URL of the PDF/document to process
-    /// - Returns: Array of parsed ClaudeNapiInfoBlock objects
-    func processNapiInfoDocument(documentURL: URL) async throws -> [ClaudeNapiInfoBlock] {
-        // 1. Read document data
-        guard let documentData = try? Data(contentsOf: documentURL) else {
-            throw APIError.imageConversionFailed
-        }
-
-        // 2. Determine MIME type
-        let mimeType = getMimeType(for: documentURL)
-
-        // 3. Encode to base64
-        let base64String = documentData.base64EncodedString()
-
-        // 4. Create request
-        guard let url = URL(string: "\(baseURL)/api/process-napi-info") else {
-            throw APIError.invalidURL
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 120 // Longer timeout for document processing
-
-        let body: [String: Any] = [
-            "document_base64": base64String,
-            "document_type": mimeType
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        // 5. Make request
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        // 6. Validate response
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw APIError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            throw APIError.serverError(statusCode: httpResponse.statusCode)
-        }
-
-        // 7. Parse JSON response
-        let decoder = JSONDecoder()
-        let apiResponse = try decoder.decode(ClaudeAPIResponse.self, from: data)
-
-        // 8. Check success
-        guard apiResponse.success, let blocks = apiResponse.blocks else {
-            throw APIError.processingFailed(message: apiResponse.error ?? "Ismeretlen hiba történt")
-        }
-
-        // 9. Validate blocks
-        guard !blocks.isEmpty else {
-            throw APIError.noInfoFound
-        }
-
-        return blocks
-    }
-
-    /// Process NF visszaküldés document with Claude API (Image)
-    /// - Parameter image: UIImage of the NF document to process
-    /// - Returns: Array of parsed NfTermekResponse objects
-    func processNfVisszakuldes(image: UIImage) async throws -> [NfTermekResponse] {
-        // 1. Convert image to JPEG with higher quality for better OCR
-        guard let imageData = image.jpegData(compressionQuality: 0.95) else {
-            throw APIError.imageConversionFailed
-        }
-
-        // 2. Encode to base64
-        let base64String = imageData.base64EncodedString()
-
-        // 3. Create request
-        guard let url = URL(string: "\(baseURL)/api/process-nf-visszakuldes") else {
-            throw APIError.invalidURL
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 90 // Longer timeout for NF processing (can have many items)
-
-        let body: [String: Any] = ["image_base64": base64String]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        // 4. Make request
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        // 5. Validate response
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw APIError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            throw APIError.serverError(statusCode: httpResponse.statusCode)
-        }
-
-        // 6. Parse JSON response
-        let decoder = JSONDecoder()
-        let apiResponse = try decoder.decode(NfClaudeAPIResponse.self, from: data)
-
-        // 7. Check success
-        guard apiResponse.success, let termekek = apiResponse.termekek else {
-            throw APIError.processingFailed(message: apiResponse.error ?? "Ismeretlen hiba történt")
-        }
-
-        // 8. Validate termekek
-        guard !termekek.isEmpty else {
-            throw APIError.noInfoFound
-        }
-
-        return termekek
-    }
-
-    /// Process NF visszaküldés document with Claude API (PDF/Document)
-    /// - Parameter documentURL: URL of the PDF/document to process
-    /// - Returns: Array of parsed NfTermekResponse objects
-    func processNfVisszakuldesDocument(documentURL: URL) async throws -> [NfTermekResponse] {
-        print("📋 [API] processNfVisszakuldesDocument called with: \(documentURL.lastPathComponent)")
-
-        // 1. Read document data
-        guard let documentData = try? Data(contentsOf: documentURL) else {
-            print("❌ [API] Failed to read document data")
-            throw APIError.imageConversionFailed
-        }
-        print("✅ [API] Document data read: \(documentData.count) bytes")
-
-        // 2. Determine MIME type
-        let mimeType = getMimeType(for: documentURL)
-        print("📝 [API] MIME type: \(mimeType)")
-
-        // 3. Encode to base64
-        let base64String = documentData.base64EncodedString()
-        print("✅ [API] Base64 encoded: \(base64String.prefix(50))...")
-
-        // 4. Create request
-        guard let url = URL(string: "\(baseURL)/api/process-nf-visszakuldes") else {
-            print("❌ [API] Invalid URL")
-            throw APIError.invalidURL
-        }
-        print("🌐 [API] Request URL: \(url)")
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 120 // Longer timeout for document processing
-
-        let body: [String: Any] = [
-            "document_base64": base64String,
-            "document_type": mimeType
-        ]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        print("📦 [API] Request body size: \(request.httpBody?.count ?? 0) bytes")
-
-        // 5. Make request
-        print("🚀 [API] Sending request to backend...")
-        let (data, response) = try await URLSession.shared.data(for: request)
-        print("✅ [API] Received response: \(data.count) bytes")
-
-        // 6. Validate response
-        guard let httpResponse = response as? HTTPURLResponse else {
-            print("❌ [API] Invalid HTTP response")
-            throw APIError.invalidResponse
-        }
-        print("📊 [API] HTTP Status: \(httpResponse.statusCode)")
-
-        guard httpResponse.statusCode == 200 else {
-            print("❌ [API] Server error: \(httpResponse.statusCode)")
-            throw APIError.serverError(statusCode: httpResponse.statusCode)
-        }
-
-        // 7. Parse JSON response
-        let decoder = JSONDecoder()
-        let apiResponse = try decoder.decode(NfClaudeAPIResponse.self, from: data)
-        print("✅ [API] JSON decoded successfully")
-
-        // 8. Check success
-        guard apiResponse.success, let termekek = apiResponse.termekek else {
-            print("❌ [API] Processing failed: \(apiResponse.error ?? "Unknown error")")
-            throw APIError.processingFailed(message: apiResponse.error ?? "Ismeretlen hiba történt")
-        }
-        print("✅ [API] Success! Found \(termekek.count) termékek")
-
-        // 9. Validate termekek
-        guard !termekek.isEmpty else {
-            print("❌ [API] No termékek found")
-            throw APIError.noInfoFound
-        }
-
-        print("🎉 [API] Returning \(termekek.count) termékek")
-        return termekek
     }
 
     // MARK: - Helper Functions
 
-    /// Correct common Hungarian OCR errors
+    /// Correct common Hungarian OCR mistakes
     static func correctHungarianText(_ text: String) -> String {
         var corrected = text
-
-        // Common OCR mistakes - Hungarian specific
-        let corrections: [String: String] = [
-            // Accent marks
-            "Tema:": "Téma:",
-            "Erintett:": "Érintett:",
-            "Hatarido:": "Határidő:",
-            "erintett": "érintett",
-            "hatarido": "határidő",
-
-            // Days of week
-            "hetfo": "hétfő",
-            "kedd": "kedd",
-            "szerda": "szerda",
-            "csutortok": "csütörtök",
-            "pentek": "péntek",
-            "szombat": "szombat",
-            "vasarnap": "vasárnap",
-
-            // Cyrillic to Latin (common OCR mistake)
-            "З": "3",
-            "І": "I",
-            "О": "0",
-            "А": "A",
-            "Е": "E",
-
-            // Common words
-            "keszlet": "készlet",
-            "terulet": "terület",
-            "feluletre": "felületre"
+        
+        // Common OCR mistakes for Hungarian characters
+        let replacements: [(String, String)] = [
+            ("õ", "ő"), ("ó́", "ő"), ("õ", "ő"),
+            ("ǘ", "ű"), ("ú́", "ű"), ("û", "ű"),
+            ("á́", "á"), ("é́", "é"), ("í́", "í"), ("ó́", "ó"), ("ú́", "ú"),
         ]
-
-        for (wrong, right) in corrections {
-            corrected = corrected.replacingOccurrences(of: wrong, with: right, options: .caseInsensitive)
+        
+        for (wrong, correct) in replacements {
+            corrected = corrected.replacingOccurrences(of: wrong, with: correct)
         }
-
+        
         return corrected
     }
 
-    /// Get fallback emoji based on topic keywords (if backend doesn't provide one)
+    /// Get emoji for a topic (fallback for simple categorization)
     static func getFallbackEmoji(for tema: String) -> String {
-        let tema = tema.lowercased()
-
-        // Food & Products
-        if tema.contains("baby") || tema.contains("esl") { return "🍼" }
-        if tema.contains("hűtő") || tema.contains("hűtött") { return "🧊" }
-        if tema.contains("szaloncukor") { return "🍬" }
-        if tema.contains("élelmiszer") || tema.contains("termék") { return "🛒" }
-
+        let temaLower = tema.lowercased()
+        
+        // Product categories
+        if temaLower.contains("pék") || temaLower.contains("kenyér") { return "🍞" }
+        if temaLower.contains("hús") || temaLower.contains("szalámi") { return "🥩" }
+        if temaLower.contains("zöldség") || temaLower.contains("gyümölcs") { return "🥬" }
+        if temaLower.contains("tejtermék") || temaLower.contains("tej") || temaLower.contains("sajt") { return "🥛" }
+        if temaLower.contains("ital") || temaLower.contains("üdítő") { return "🥤" }
+        
         // Operations
-        if tema.contains("kassa") || tema.contains("pénz") { return "💰" }
-        if tema.contains("mystery") || tema.contains("ellenőrzés") { return "🔍" }
-        if tema.contains("raktár") || tema.contains("készlet") { return "📦" }
-
-        // Marketing & Display
-        if tema.contains("dekoráció") || tema.contains("karácsony") { return "🎄" }
-        if tema.contains("magazin") || tema.contains("újság") { return "📰" }
-        if tema.contains("display") || tema.contains("mpk") { return "📺" }
-        if tema.contains("akció") || tema.contains("kedvezmény") { return "🏷️" }
-
-        // Training & Info
-        if tema.contains("training") || tema.contains("tréner") || tema.contains("oktatás") { return "📚" }
-        if tema.contains("határidő") || tema.contains("időpont") { return "⏰" }
-        if tema.contains("figyelem") || tema.contains("fontos") { return "⚠️" }
-        if tema.contains("statisztika") || tema.contains("adat") { return "📊" }
-
+        if temaLower.contains("kassa") || temaLower.contains("pénz") { return "💰" }
+        if temaLower.contains("raktár") || temaLower.contains("készlet") { return "📦" }
+        if temaLower.contains("ár") || temaLower.contains("árazás") { return "💲" }
+        
+        // General
+        if temaLower.contains("figyelem") || temaLower.contains("fontos") { return "⚠️" }
+        if temaLower.contains("akció") { return "🏷️" }
+        
         return "📋" // default
     }
 
-    /// Get MIME type from file URL
-    private func getMimeType(for url: URL) -> String {
-        let pathExtension = url.pathExtension.lowercased()
-
-        switch pathExtension {
-        case "pdf":
-            return "application/pdf"
-        case "xlsx":
-            return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        case "xls":
-            return "application/vnd.ms-excel"
-        case "csv":
-            return "text/csv"
-        case "txt":
-            return "text/plain"
-        case "doc":
-            return "application/msword"
-        case "docx":
-            return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        default:
-            return "application/octet-stream"
-        }
+    // MARK: - Placeholder functions for NF (to be implemented later)
+    
+    func processNfVisszakuldes(image: UIImage) async throws -> [NfTermekResponse] {
+        // TODO: Implement NF processing when needed
+        throw APIError.processingFailed(message: "NF feldolgozás még nem elérhető")
+    }
+    
+    func processNfVisszakuldesDocument(documentURL: URL) async throws -> [NfTermekResponse] {
+        // TODO: Implement NF document processing when needed
+        throw APIError.processingFailed(message: "NF feldolgozás még nem elérhető")
     }
 
     // MARK: - Error Types
@@ -410,7 +152,6 @@ class ClaudeAPIService {
         case serverError(statusCode: Int)
         case processingFailed(message: String)
         case noInfoFound
-        case networkError(Error)
 
         var errorDescription: String? {
             switch self {
@@ -421,13 +162,11 @@ class ClaudeAPIService {
             case .invalidResponse:
                 return "Érvénytelen válasz a szervertől"
             case .serverError(let statusCode):
-                return "Szerverhiba történt (kód: \(statusCode))"
+                return "Szerverhiba (kód: \(statusCode))"
             case .processingFailed(let message):
                 return "Feldolgozási hiba: \(message)"
             case .noInfoFound:
-                return "Nem található információ a dokumentumon"
-            case .networkError(let error):
-                return "Hálózati hiba: \(error.localizedDescription)"
+                return "Nem található információ"
             }
         }
     }

@@ -35,9 +35,27 @@ struct NapiInfoListItem: View {
                     .fontWeight(.medium)
                     .foregroundColor(Color.adaptiveText(colorScheme: colorScheme))
 
-                Text(info.feldolgozva ? "Feldolgozva" : "Még nincs feltöltve")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                HStack(spacing: 8) {
+                    Text(info.feldolgozva ? "Feldolgozva" : "Még nincs feltöltve")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    // Deadline badge
+                    if let hatarido = info.hatarido, !hatarido.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: "clock.fill")
+                                .font(.caption2)
+                            Text(hatarido)
+                                .font(.caption2)
+                                .fontWeight(.medium)
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.orange)
+                        .cornerRadius(6)
+                    }
+                }
             }
 
             Spacer()

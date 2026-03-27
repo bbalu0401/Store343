@@ -27,14 +27,16 @@ struct NfBizonylatDetailView: View {
                         Image(systemName: "chevron.left")
                         Text("Vissza")
                     }
-                    .foregroundColor(.blue)
+                    .foregroundColor(.lidlBlue)
                 }
                 Spacer()
                 Text("NF visszaküldés")
+                    .font(.headline)
                 Spacer()
             }
             .padding()
-            .background(Color.gray.opacity(0.2))
+            .background(Color.adaptiveBackground(colorScheme: colorScheme))
+            .overlay(Divider().background(Color.secondary.opacity(0.3)), alignment: .bottom)
 
             // Content ScrollView
             ScrollView {
@@ -85,12 +87,12 @@ struct NfBizonylatDetailView: View {
                                 Text("\(osszesTermekMennyiseg) db")
                                     .font(.title3)
                                     .fontWeight(.semibold)
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(.lidlBlue)
                             }
                         }
                     }
                     .padding()
-                    .background(Color.blue.opacity(0.1))
+                    .background(Color.lidlBlue.opacity(colorScheme == .dark ? 0.2 : 0.1))
 
                     // Termékek
                     LazyVStack(spacing: 12) {
@@ -102,7 +104,7 @@ struct NfBizonylatDetailView: View {
                 }
             }
         }
-        .background(Color.white)
+        .background(Color.adaptiveBackground(colorScheme: colorScheme))
     }
 }
 

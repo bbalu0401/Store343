@@ -11,9 +11,9 @@ struct NfVisszakuldesView: View {
     @Environment(\.managedObjectContext) private var viewContext
 
     @FetchRequest(
-        sortDescriptors: [NSSortDescriptor(keyPath: \NfBizonylat.bizonylatSzam, ascending: true)],
+        sortDescriptors: [NSSortDescriptor(keyPath: \NfHet.hetSzam, ascending: true)],
         animation: .default)
-    private var bizonylatok: FetchedResults<NfBizonylat>
+    private var hetek: FetchedResults<NfHet>
 
     @State private var showDocumentPicker = false
     @State private var selectedDocumentURL: URL? = nil
@@ -25,10 +25,80 @@ struct NfVisszakuldesView: View {
 
     @State private var searchText = ""
     @State private var selectedBizonylat: NfBizonylat? = nil
+    @FocusState private var isSearchFocused: Bool
+    @State private var selectedWeek: Int = 0 // Current week number (1-52)
 
-    // Debug
-    @State private var debugLogs: [String] = []
-    @State private var showDebugLog = false
+    // MARK: - Computed Properties
+
+    /// Get current NfHet for selected week, or nil if doesn't exist yet
+    private var currentHet: NfHet? {
+        var calendar = Calendar.current
+        calendar.firstWeekday = 2 // Monday
+        calendar.minimumDaysInFirstWeek = 4 // ISO 8601
+
+        let currentYear = calendar.component(.year, from: Date())
+        return hetek.first { $0.hetSzam == selectedWeek && $0.ev == currentYear }
+    }
+
+    /// Bizonylatok for the selected week only
+    private var filteredBizonylatok: [NfBizonylat] {
+        guard let het = currentHet else { return [] }
+        return (het.bizonylatokRelation as? Set<NfBizonylat>)?.sorted { ($0.bizonylatSzam ?? "") < ($1.bizonylatSzam ?? "") } ?? []
+    }
+
+    /// Get date range string for selected week
+    private func getWeekDateRange() -> String {
+        // Prevent crash if week not set yet
+        guard selectedWeek > 0 && selectedWeek <= 52 else {
+            return ""
+        }
+
+        var calendar = Calendar.current
+        calendar.firstWeekday = 2 // Monday
+        calendar.minimumDaysInFirstWeek = 4 // ISO 8601
+
+        let currentYear = Calendar.current.component(.year, from: Date())
+
+        // Find a date that is definitely in the selected week of the current year
+        // Start from middle of the year and search
+        guard let midYear = calendar.date(from: DateComponents(year: currentYear, month: 7, day: 1)) else {
+            return ""
+        }
+
+        // Search for the correct week
+        var searchDate = calendar.date(from: DateComponents(year: currentYear, month: 1, day: 4))! // First Thursday
+        var foundWeek = calendar.component(.weekOfYear, from: searchDate)
+
+        // Safety counter to prevent infinite loop
+        var iterations = 0
+        let maxIterations = 60
+
+        // Navigate to the target week
+        while foundWeek < selectedWeek && iterations < maxIterations {
+            searchDate = calendar.date(byAdding: .weekOfYear, value: 1, to: searchDate)!
+            foundWeek = calendar.component(.weekOfYear, from: searchDate)
+            iterations += 1
+        }
+
+        iterations = 0 // Reset for second loop
+
+        while foundWeek > selectedWeek && iterations < maxIterations {
+            searchDate = calendar.date(byAdding: .weekOfYear, value: -1, to: searchDate)!
+            foundWeek = calendar.component(.weekOfYear, from: searchDate)
+            iterations += 1
+        }
+
+        // Get the week interval
+        guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: searchDate) else {
+            return ""
+        }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "hu_HU")
+        formatter.dateFormat = "MM.dd"
+
+        return "\(formatter.string(from: weekInterval.start))-\(formatter.string(from: weekInterval.end.addingTimeInterval(-1)))"
+    }
 
     var body: some View {
         ZStack {
@@ -52,12 +122,6 @@ struct NfVisszakuldesView: View {
                             .font(.headline)
 
                         Spacer()
-
-                        // Debug button
-                        Button(action: { showDebugLog.toggle() }) {
-                            Image(systemName: "ladybug.fill")
-                                .foregroundColor(showDebugLog ? .green : .secondary)
-                        }
                     }
                     .padding()
                     .background(Color.adaptiveBackground(colorScheme: colorScheme))
@@ -87,35 +151,22 @@ struct NfVisszakuldesView: View {
                 ]
             )
         }
-        .onChange(of: showDocumentPicker) { oldValue, newValue in
-            log("📂 showDocumentPicker: \(oldValue) → \(newValue)")
-        }
-        .onChange(of: selectedDocumentURL) { oldValue, newValue in
-            log("🔄 selectedDocumentURL onChange TRIGGERED!")
-            log("   Old: \(oldValue?.lastPathComponent ?? "nil")")
-            log("   New: \(newValue?.lastPathComponent ?? "nil")")
+        .task(id: selectedDocumentURL) {
+            print("🟢 [NF] task(id:) triggered! selectedDocumentURL: \(selectedDocumentURL?.lastPathComponent ?? "nil")")
+            print("🟢 [NF] showDocumentPicker: \(showDocumentPicker)")
 
-            if let documentURL = newValue {
-                log("✅ Valid document URL, processing...")
-
-                // DEBUG: Show alert that processing started
-                DispatchQueue.main.async {
-                    successMessage = "DEBUG: Processing started for \(documentURL.lastPathComponent)"
-                    showSuccess = true
-                }
-
-                processDocument(documentURL: documentURL)
-            } else if oldValue != nil {
-                log("⚠️ URL reset to nil (after processing)")
-            } else {
-                log("⚠️ Both old and new are nil")
-
-                // DEBUG: Show alert that onChange was called but URL is nil
-                DispatchQueue.main.async {
-                    errorMessage = "DEBUG: onChange called but newValue is NIL!"
-                    showError = true
-                }
+            guard let documentURL = selectedDocumentURL else {
+                print("⚠️ [NF] No document URL to process")
+                return
             }
+
+            print("🟢 [NF] Dismissing sheet and calling processDocument...")
+            await MainActor.run {
+                showDocumentPicker = false
+            }
+
+            print("🟢 [NF] About to call processDocument with file: \(documentURL.lastPathComponent)")
+            processDocument(documentURL: documentURL)
         }
         .alert("Hiba", isPresented: $showError) {
             Button("OK", role: .cancel) { }
@@ -127,52 +178,23 @@ struct NfVisszakuldesView: View {
         } message: {
             Text(successMessage ?? "Dokumentum sikeresen feldolgozva")
         }
-        .onAppear {
-            log("🚀 NfVisszakuldesView appeared")
-        }
-        .overlay(alignment: .bottom) {
-            if showDebugLog {
-                VStack(spacing: 0) {
-                    HStack {
-                        Text("Debug Log")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                        Spacer()
-                        Button("Clear") {
-                            debugLogs.removeAll()
-                        }
-                        .foregroundColor(.yellow)
-                        Button("Close") {
-                            showDebugLog = false
-                        }
-                        .foregroundColor(.white)
-                    }
-                    .padding()
-                    .background(Color.black.opacity(0.9))
-
-                    ScrollView {
-                        ScrollViewReader { proxy in
-                            VStack(alignment: .leading, spacing: 4) {
-                                ForEach(Array(debugLogs.enumerated()), id: \.offset) { index, log in
-                                    Text(log)
-                                        .font(.system(size: 10, design: .monospaced))
-                                        .foregroundColor(.green)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .id(index)
-                                }
-                            }
-                            .padding()
-                            .onChange(of: debugLogs.count) { _, _ in
-                                if let lastIndex = debugLogs.indices.last {
-                                    proxy.scrollTo(lastIndex, anchor: .bottom)
-                                }
-                            }
-                        }
-                    }
-                    .frame(height: 300)
-                    .background(Color.black.opacity(0.9))
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Kész") {
+                    isSearchFocused = false
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                 }
-                .transition(.move(edge: .bottom))
+                .fontWeight(.semibold)
+            }
+        }
+        .onAppear {
+            // Set to current week on first appear using ISO 8601
+            if selectedWeek == 0 {
+                var calendar = Calendar.current
+                calendar.firstWeekday = 2 // Monday
+                calendar.minimumDaysInFirstWeek = 4 // ISO 8601
+                selectedWeek = calendar.component(.weekOfYear, from: Date())
             }
         }
     }
@@ -181,21 +203,25 @@ struct NfVisszakuldesView: View {
     var mainView: some View {
         ScrollView {
             VStack(spacing: 20) {
+                // Week Navigation Header
+                weekPickerView
+                    .padding(.horizontal)
+                    .padding(.top, 12)
+
                 // Upload Button
                 uploadButton
-                    .padding(.top, 20)
                     .padding(.horizontal)
 
                 // Bizonylatok Section
-                if !bizonylatok.isEmpty {
+                if !filteredBizonylatok.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("FELDOLGOZOTT BIZONYLATOK")
+                        Text("FELDOLGOZOTT BIZONYLATOK (\(selectedWeek). hét)")
                             .font(.caption)
                             .fontWeight(.semibold)
                             .foregroundColor(.secondary)
                             .padding(.horizontal)
 
-                        ForEach(bizonylatok, id: \.id) { bizonylat in
+                        ForEach(filteredBizonylatok, id: \.id) { bizonylat in
                             NfBizonylatCard(bizonylat: bizonylat) {
                                 selectedBizonylat = bizonylat
                             }
@@ -220,6 +246,7 @@ struct NfVisszakuldesView: View {
 
                         TextField("Cikkszám keresése...", text: $searchText)
                             .keyboardType(.numberPad)
+                            .focused($isSearchFocused)
                     }
                     .padding()
                     .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
@@ -238,18 +265,59 @@ struct NfVisszakuldesView: View {
         }
     }
 
+    // MARK: - Week Picker View
+    var weekPickerView: some View {
+        HStack(spacing: 16) {
+            // Previous week button
+            Button(action: {
+                if selectedWeek > 1 {
+                    selectedWeek -= 1
+                }
+            }) {
+                Image(systemName: "chevron.left")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .foregroundColor(selectedWeek > 1 ? .lidlBlue : .gray)
+                    .frame(width: 44, height: 44)
+            }
+            .disabled(selectedWeek <= 1)
+
+            // Week display
+            VStack(spacing: 4) {
+                Text("\(selectedWeek). hét")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.primary)
+
+                Text(getWeekDateRange())
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+
+            // Next week button
+            Button(action: {
+                if selectedWeek < 52 {
+                    selectedWeek += 1
+                }
+            }) {
+                Image(systemName: "chevron.right")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .foregroundColor(selectedWeek < 52 ? .lidlBlue : .gray)
+                    .frame(width: 44, height: 44)
+            }
+            .disabled(selectedWeek >= 52)
+        }
+        .padding()
+        .background(Color.adaptiveCardBackground(colorScheme: colorScheme))
+        .cornerRadius(12)
+    }
+
     // MARK: - Upload Button
     var uploadButton: some View {
         Button(action: {
-            log("🎯 Upload button tapped")
             showDocumentPicker = true
-            // Debug: Force show alert to verify button works
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                if !showDocumentPicker {
-                    errorMessage = "DEBUG: showDocumentPicker nem változott!"
-                    showError = true
-                }
-            }
         }) {
             HStack {
                 Image(systemName: "doc.badge.plus")
@@ -276,7 +344,8 @@ struct NfVisszakuldesView: View {
 
     // MARK: - Search Results
     var searchResultsView: some View {
-        let allTermekek = bizonylatok.flatMap { bizonylat -> [(NfTermek, NfBizonylat)] in
+        // Only search in current week's bizonylatok
+        let allTermekek = filteredBizonylatok.flatMap { bizonylat -> [(NfTermek, NfBizonylat)] in
             guard let termekSet = bizonylat.termekekRelation as? Set<NfTermek> else { return [] }
             return termekSet.map { ($0, bizonylat) }
         }
@@ -293,42 +362,40 @@ struct NfVisszakuldesView: View {
                     .padding()
             } else {
                 ForEach(filteredTermekek, id: \.0.id) { termek, bizonylat in
-                    TermekSearchCard(termek: termek, bizonylat: bizonylat)
-                        .padding(.horizontal)
+                    TermekSearchCard(
+                        termek: termek,
+                        bizonylat: bizonylat,
+                        onSave: {
+                            // Clear search and jump back to search field
+                            searchText = ""
+
+                            // Small delay to ensure view updates before refocusing
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                isSearchFocused = true
+                            }
+                        }
+                    )
+                    .padding(.horizontal)
                 }
             }
         }
     }
 
-    // MARK: - Debug Helper
-    func log(_ message: String) {
-        print(message)
-        DispatchQueue.main.async {
-            self.debugLogs.append("[\(Date().formatted(date: .omitted, time: .standard))] \(message)")
-        }
-    }
-
     // MARK: - Process Document
     func processDocument(documentURL: URL) {
-        log("📄 Starting document processing: \(documentURL.lastPathComponent)")
         isProcessing = true
         errorMessage = nil
 
         Task {
             do {
-                log("🚀 Calling backend API...")
                 let claudeTermekek = try await ClaudeAPIService.shared.processNfVisszakuldesDocument(documentURL: documentURL)
 
-                log("✅ Backend returned \(claudeTermekek.count) termékek")
-
                 await MainActor.run {
-                    log("💾 Saving to Core Data...")
                     saveToCoreData(claudeTermekek)
 
                     let bizonylatCount = Set(claudeTermekek.map { $0.bizonylat_szam }).count
                     successMessage = "Sikeresen feldolgozva: \(bizonylatCount) bizonylat, \(claudeTermekek.count) termék"
                     showSuccess = true
-                    log("✅ Saved! \(bizonylatCount) bizonylat, \(claudeTermekek.count) termék")
 
                     // Cleanup temp file
                     try? FileManager.default.removeItem(at: documentURL)
@@ -336,7 +403,6 @@ struct NfVisszakuldesView: View {
                     isProcessing = false
                 }
             } catch {
-                log("❌ Error: \(error.localizedDescription)")
                 await MainActor.run {
                     errorMessage = "Feldolgozási hiba: \(error.localizedDescription)"
                     showError = true
@@ -349,6 +415,10 @@ struct NfVisszakuldesView: View {
 
     // MARK: - Save to Core Data
     func saveToCoreData(_ claudeTermekek: [NfTermekResponse]) {
+        // Get or create NfHet for selected week
+        let currentYear = Int16(Calendar.current.component(.year, from: Date()))
+        let het = getOrCreateHet(weekNumber: Int16(selectedWeek), year: currentYear)
+
         // Group by bizonylat
         var bizonylatGroups: [String: [NfTermekResponse]] = [:]
 
@@ -361,14 +431,15 @@ struct NfVisszakuldesView: View {
 
         // Create or update bizonylatok
         for (bizonylatSzam, termekek) in bizonylatGroups {
-            // Check if bizonylat exists
-            let existingBizonylat = bizonylatok.first { $0.bizonylatSzam == bizonylatSzam }
+            // Check if bizonylat exists in current week
+            let existingBizonylat = filteredBizonylatok.first { $0.bizonylatSzam == bizonylatSzam }
 
             let bizonylat = existingBizonylat ?? NfBizonylat(context: viewContext)
             if existingBizonylat == nil {
                 bizonylat.id = UUID()
                 bizonylat.bizonylatSzam = bizonylatSzam
                 bizonylat.kesz = false
+                bizonylat.het = het // Assign to selected week
             }
 
             // Add termekek
@@ -402,6 +473,73 @@ struct NfVisszakuldesView: View {
             errorMessage = "Mentési hiba: \(error.localizedDescription)"
             showError = true
         }
+    }
+
+    // MARK: - Helper Functions
+
+    /// Get or create NfHet for given week number and year
+    private func getOrCreateHet(weekNumber: Int16, year: Int16) -> NfHet {
+        // Check if het already exists
+        if let existingHet = hetek.first(where: { $0.hetSzam == weekNumber && $0.ev == year }) {
+            return existingHet
+        }
+
+        // Create new het
+        let newHet = NfHet(context: viewContext)
+        newHet.id = UUID()
+        newHet.hetSzam = weekNumber
+        newHet.ev = year
+        newHet.befejezve = false
+
+        // Calculate start and end dates for this week using ISO 8601
+        var calendar = Calendar.current
+        calendar.firstWeekday = 2 // Monday
+        calendar.minimumDaysInFirstWeek = 4 // ISO 8601
+
+        // Validate week number
+        guard weekNumber > 0 && weekNumber <= 53 else {
+            // Invalid week number, use current date as fallback
+            newHet.kezdoDatum = Date()
+            newHet.vegDatum = Date()
+            return newHet
+        }
+
+        // Find a date in the target week
+        // Start from first Thursday of the year (guaranteed to be in week 1)
+        var searchDate = calendar.date(from: DateComponents(year: Int(year), month: 1, day: 4))! // First Thursday
+        var foundWeek = calendar.component(.weekOfYear, from: searchDate)
+
+        // Safety counter to prevent infinite loop
+        var iterations = 0
+        let maxIterations = 60
+
+        // Navigate to the target week
+        while foundWeek < weekNumber && iterations < maxIterations {
+            searchDate = calendar.date(byAdding: .weekOfYear, value: 1, to: searchDate)!
+            foundWeek = calendar.component(.weekOfYear, from: searchDate)
+            iterations += 1
+        }
+
+        iterations = 0 // Reset for second loop
+
+        while foundWeek > weekNumber && iterations < maxIterations {
+            searchDate = calendar.date(byAdding: .weekOfYear, value: -1, to: searchDate)!
+            foundWeek = calendar.component(.weekOfYear, from: searchDate)
+            iterations += 1
+        }
+
+        // Get the week interval (Monday to Sunday)
+        guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: searchDate) else {
+            // Fallback
+            newHet.kezdoDatum = Date()
+            newHet.vegDatum = Date()
+            return newHet
+        }
+
+        newHet.kezdoDatum = weekInterval.start
+        newHet.vegDatum = weekInterval.end.addingTimeInterval(-1) // End is exclusive, so subtract 1 second
+
+        return newHet
     }
 }
 
@@ -456,6 +594,7 @@ struct NfBizonylatCard: View {
 struct TermekSearchCard: View {
     let termek: NfTermek
     let bizonylat: NfBizonylat
+    let onSave: () -> Void
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.managedObjectContext) private var viewContext
 
@@ -499,11 +638,44 @@ struct TermekSearchCard: View {
 
             Divider()
 
-            // Details
+            // Details with delete buttons
             if !talalasokArray.isEmpty {
-                Text("Részletek: " + talalasokArray.map { "\($0)" }.joined(separator: " + "))
-                    .font(.subheadline)
-                    .foregroundColor(.primary)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Részletek:")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    // Show each quantity entry with delete button
+                    ForEach(Array(talalasokArray.enumerated()), id: \.offset) { index, mennyiseg in
+                        HStack(spacing: 8) {
+                            Text("\(mennyiseg) db")
+                                .font(.subheadline)
+                                .foregroundColor(.primary)
+
+                            Spacer()
+
+                            Button(action: {
+                                deleteTalalas(at: index)
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "trash")
+                                        .font(.caption)
+                                    Text("Törlés")
+                                        .font(.caption)
+                                }
+                                .foregroundColor(.red)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.red.opacity(0.1))
+                                .cornerRadius(6)
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.adaptiveCardBackground(colorScheme: colorScheme).opacity(0.5))
+                        .cornerRadius(8)
+                    }
+                }
             }
 
             // Total (big and centered)
@@ -577,9 +749,28 @@ struct TermekSearchCard: View {
         do {
             try viewContext.save()
             mostTalaltam = ""
-            isFocused = false
+            onSave() // Clear search and jump back to search field
         } catch {
             print("Error saving: \(error)")
         }
     }
+
+    func deleteTalalas(at index: Int) {
+        var array = talalasokArray
+        guard index < array.count else { return }
+
+        // Remove the item at index
+        array.remove(at: index)
+
+        // Update termek
+        termek.talalasok = array.map { String($0) }.joined(separator: ",")
+        termek.osszesen = array.reduce(0, +)
+
+        do {
+            try viewContext.save()
+        } catch {
+            print("Error deleting talalas: \(error)")
+        }
+    }
 }
+
